@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/krist/Documents/Projects/Landscape Photography Planner/**)"
+    ]
+  }
+}

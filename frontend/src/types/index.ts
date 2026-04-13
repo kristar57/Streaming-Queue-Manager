@@ -1,0 +1,153 @@
+// ============================================================
+// Database table types — mirror the schema exactly
+// ============================================================
+
+export type TitleType = 'movie' | 'show'
+export type EntryStatus = 'want_to_watch' | 'watching' | 'watched'
+export type EntryPriority = 'high' | 'medium' | 'low'
+export type AvailabilityType = 'flatrate' | 'rent' | 'buy' | 'ads' | 'free'
+export type NotificationType = 'now_streaming' | 'new_season' | 'leaving_soon'
+
+export interface Profile {
+  id: string
+  display_name: string
+  is_admin: boolean
+  invited_by: string | null
+  consent_accepted_at: string | null
+  consent_policy_version: string | null
+  created_at: string
+}
+
+export interface InviteCode {
+  id: string
+  code: string
+  created_by: string
+  used_by: string | null
+  expires_at: string | null
+  created_at: string
+}
+
+export interface Title {
+  id: string
+  tmdb_id: number
+  type: TitleType
+  title: string
+  overview: string | null
+  poster_path: string | null
+  backdrop_path: string | null
+  release_date: string | null
+  genres: string[]
+  tmdb_rating: number | null
+  runtime_minutes: number | null
+  season_count: number | null
+  episode_count: number | null
+  tmdb_status: string | null
+  last_synced_at: string
+  created_at: string
+}
+
+export interface WatchlistEntry {
+  id: string
+  user_id: string
+  title_id: string
+  status: EntryStatus
+  priority: EntryPriority
+  custom_tags: string[]
+  current_season: number | null
+  current_episode: number | null
+  notes: string | null
+  date_started: string | null
+  date_completed: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Rating {
+  id: string
+  user_id: string
+  title_id: string
+  rating: number | null
+  review: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface UserSubscription {
+  id: string
+  user_id: string
+  provider_id: number
+  provider_name: string
+  provider_logo_path: string | null
+  created_at: string
+}
+
+export interface StreamingAvailability {
+  id: string
+  title_id: string
+  provider_id: number
+  provider_name: string
+  provider_logo_path: string | null
+  availability_type: AvailabilityType
+  country_code: string
+  last_checked_at: string
+}
+
+export interface NotificationPreferences {
+  id: string
+  user_id: string
+  notify_now_streaming: boolean
+  notify_new_season: boolean
+  notify_leaving_soon: boolean
+  email_enabled: boolean
+  created_at: string
+}
+
+export interface NotificationLog {
+  id: string
+  user_id: string
+  title_id: string
+  type: NotificationType
+  sent_at: string
+}
+
+// ============================================================
+// TMDB API shapes (used before persisting to DB)
+// ============================================================
+
+export interface TMDBSearchResult {
+  id: number
+  media_type: 'movie' | 'tv' | 'person'
+  title?: string          // movies
+  name?: string           // shows
+  overview: string
+  poster_path: string | null
+  backdrop_path: string | null
+  release_date?: string   // movies
+  first_air_date?: string // shows
+  genre_ids: number[]
+  vote_average: number
+}
+
+export interface TMDBProviderEntry {
+  provider_id: number
+  provider_name: string
+  logo_path: string
+}
+
+export interface TMDBWatchProviders {
+  flatrate?: TMDBProviderEntry[]
+  rent?: TMDBProviderEntry[]
+  buy?: TMDBProviderEntry[]
+  ads?: TMDBProviderEntry[]
+  free?: TMDBProviderEntry[]
+}
+
+// ============================================================
+// Composite types used in UI
+// ============================================================
+
+export interface WatchlistEntryWithTitle extends WatchlistEntry {
+  title: Title
+}
+
+export const CURRENT_POLICY_VERSION = '1.0'
