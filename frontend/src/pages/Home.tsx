@@ -98,7 +98,7 @@ export default function Home() {
   // Active queue: null = personal list, string = shared queue id
   const [activeQueueId, setActiveQueueId] = useState<string | null>(null)
 
-  const { titles: queueTitles, loading: queueLoading, approveTitle, shelfTitle, removeTitle, reorderTitle } = useQueueDetail(activeQueueId)
+  const { titles: queueTitles, loading: queueLoading, approveTitle, shelfTitle, removeTitle, reorderTitle, refresh: refreshQueueDetail } = useQueueDetail(activeQueueId)
 
   const [queueSearchBusy, setQueueSearchBusy] = useState(false)
   const [addAsProposal, setAddAsProposal] = useState(false)
@@ -205,6 +205,7 @@ export default function Home() {
     }
     await updateEntry(editingEntry.id, patch as never)
     setEditingEntry(null)
+    if (activeQueueId) await refreshQueueDetail()
   }
 
   const activeQueue = queues.find((q) => q.id === activeQueueId) ?? null

@@ -15,7 +15,15 @@ function isUpcomingByTmdb(title: Title): boolean {
 
 function isUpcomingForQueue(qt: QueueTitleWithMemberEntries, currentUserId: string): boolean {
   const myEntry = qt.member_entries.find((m) => m.user_id === currentUserId)?.entry
-  if (myEntry) return myEntry.status === 'upcoming'
+
+  // User explicitly marked as upcoming → Upcoming (overrides TMDB)
+  if (myEntry?.status === 'upcoming') return true
+
+  // After the check above, any existing myEntry has a non-upcoming status,
+  // meaning the user has confirmed it's available → not upcoming
+  if (myEntry) return false
+
+  // No personal entry yet — fall back to TMDB
   return isUpcomingByTmdb(qt.title)
 }
 
