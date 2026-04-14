@@ -196,6 +196,7 @@ export function useQueueDetail(queueId: string | null) {
       .channel(`queue_detail_${queueId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'queue_titles' }, fetchDetail)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'queue_members' }, fetchDetail)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'watchlist_entries' }, fetchDetail)
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
