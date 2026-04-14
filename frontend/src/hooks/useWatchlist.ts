@@ -326,5 +326,19 @@ export function useWatchlist(userId?: string) {
     [entries, fetchEntries]
   )
 
-  return { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry, refresh: fetchEntries }
+  // Re-fetch streaming availability for all titles in the watchlist,
+  // then refresh the entries so the UI reflects the updated data.
+  const syncAllAvailability = useCallback(async () => {
+    const uniqueTitles = [...new Map(entries.map((e) => [e.title_id, e])).values()]
+    await Promise.all(
+      uniqueTitles.map((e) =>
+        e.title?.tmdb_id
+          ? cacheAvailability(e.title_id, e.title.tmdb_id, e.title.type === 'movie' ? 'movie' : 'tv')
+          : Promise.resolve()
+      )
+    )
+    await fetchEntries()
+  }, [entries, fetchEntries])
+
+  return { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry, syncAllAvailability, refresh: fetchEntries }
 }

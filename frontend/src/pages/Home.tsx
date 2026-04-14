@@ -89,7 +89,7 @@ function sortUpNext(entries: WatchlistEntryWithTitle[]): WatchlistEntryWithTitle
 // ---------------------------------------------------------------
 export default function Home() {
   const { user, profile, signOut } = useAuth()
-  const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry } = useWatchlist(user?.id)
+  const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry, syncAllAvailability } = useWatchlist(user?.id)
   const { subscriptions, subscribedIds, toggleSubscription } = useSubscriptions(user?.id)
   const { queues } = useSharedQueues(user?.id)
 
@@ -527,6 +527,7 @@ export default function Home() {
           subscriptions={subscriptions}
           subscribedIds={subscribedIds}
           onToggle={toggleSubscription}
+          onSyncAll={syncAllAvailability}
           onClose={() => setShowServices(false)}
         />
       )}

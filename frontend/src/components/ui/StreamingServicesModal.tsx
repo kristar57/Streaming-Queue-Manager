@@ -6,6 +6,7 @@ interface StreamingServicesModalProps {
   subscriptions: UserSubscription[]
   subscribedIds: Set<number>
   onToggle: (provider: { provider_id: number; provider_name: string; provider_logo_path: string | null }) => Promise<void>
+  onSyncAll: () => Promise<void>
   onClose: () => void
 }
 
@@ -13,12 +14,14 @@ export function StreamingServicesModal({
   subscriptions,
   subscribedIds,
   onToggle,
+  onSyncAll,
   onClose,
 }: StreamingServicesModalProps) {
   const [providers, setProviders] = useState<TMDBProvider[]>([])
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState<number | null>(null)
   const [search, setSearch] = useState('')
+  const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
     getAvailableProviders('US')
@@ -123,9 +126,13 @@ export function StreamingServicesModal({
 
         {/* Footer */}
         <div className="px-5 py-4 border-t border-white/10 flex-shrink-0 flex items-center justify-between gap-3">
-          <p className="text-[11px] text-[var(--text-secondary)]">
-            Powered by TMDB · US providers
-          </p>
+          <button
+            onClick={async () => { setSyncing(true); try { await onSyncAll() } finally { setSyncing(false) } }}
+            disabled={syncing}
+            className="text-xs text-[var(--text-secondary)] hover:text-white border border-white/10 rounded-lg px-3 py-1.5 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {syncing ? 'Syncing…' : '↻ Refresh availability'}
+          </button>
           <button
             onClick={onClose}
             className="px-5 py-2 bg-[var(--accent)] hover:opacity-90 text-white font-semibold rounded-xl text-sm transition-opacity cursor-pointer"
