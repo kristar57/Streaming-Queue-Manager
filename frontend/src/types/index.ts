@@ -27,6 +27,12 @@ export interface InviteCode {
   created_at: string
 }
 
+export interface CastMember {
+  name: string
+  character: string
+  profile_path: string | null
+}
+
 export interface Title {
   id: string
   tmdb_id: number
@@ -42,6 +48,15 @@ export interface Title {
   season_count: number | null
   episode_count: number | null
   tmdb_status: string | null
+  // Enriched from detail + credits fetch
+  cast_members: CastMember[] | null
+  tagline: string | null
+  director: string | null           // movies
+  created_by: string | null         // shows
+  network: string | null            // shows
+  last_air_date: string | null      // shows
+  next_episode_air_date: string | null  // shows
+  in_production: boolean | null     // shows
   last_synced_at: string
   created_at: string
 }

@@ -59,12 +59,60 @@ export async function searchTitles(query: string): Promise<TMDBSearchResult[]> {
   return (data.results ?? []).filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
 }
 
-export async function getMovieDetails(tmdbId: number) {
-  return tmdbCall(`/movie/${tmdbId}`)
+// ---------------------------------------------------------------
+// Detail + credits in one call (append_to_response=credits)
+// ---------------------------------------------------------------
+
+interface TMDBCrewMember {
+  job: string
+  name: string
 }
 
-export async function getShowDetails(tmdbId: number) {
-  return tmdbCall(`/tv/${tmdbId}`)
+interface TMDBCastMember {
+  name: string
+  character: string
+  profile_path: string | null
+  order: number
+}
+
+interface TMDBCreator {
+  name: string
+}
+
+interface TMDBNetwork {
+  name: string
+}
+
+interface TMDBNextEpisode {
+  air_date: string | null
+}
+
+export interface TMDBTitleDetails {
+  // shared
+  runtime?: number                    // movies (minutes)
+  status: string
+  tagline?: string
+  credits: { cast: TMDBCastMember[]; crew: TMDBCrewMember[] }
+  // movies
+  release_date?: string
+  // shows
+  number_of_seasons?: number
+  number_of_episodes?: number
+  episode_run_time?: number[]
+  in_production?: boolean
+  last_air_date?: string | null
+  next_episode_to_air?: TMDBNextEpisode | null
+  created_by?: TMDBCreator[]
+  networks?: TMDBNetwork[]
+}
+
+export async function getFullTitleDetails(
+  type: 'movie' | 'tv',
+  tmdbId: number
+): Promise<TMDBTitleDetails> {
+  return tmdbCall<TMDBTitleDetails>(`/${type}/${tmdbId}`, {
+    append_to_response: 'credits',
+  })
 }
 
 export async function getWatchProviders(

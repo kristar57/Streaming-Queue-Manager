@@ -1,14 +1,16 @@
 import { EntryCard } from './EntryCard'
-import type { WatchlistEntryWithTitle, EntryStatus } from '../../types'
+import type { WatchlistEntryWithTitle, EntryStatus, StreamingAvailability } from '../../types'
 
 interface CardViewProps {
   groups: { label: string; entries: WatchlistEntryWithTitle[] }[]
+  availability: Record<string, StreamingAvailability[]>
+  subscribedIds: Set<number>
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
 }
 
-export function CardView({ groups, onStatusChange, onPriorityCycle, onDelete }: CardViewProps) {
+export function CardView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onDelete }: CardViewProps) {
   return (
     <div className="space-y-8">
       {groups.map((group) =>
@@ -25,6 +27,8 @@ export function CardView({ groups, onStatusChange, onPriorityCycle, onDelete }: 
                 <EntryCard
                   key={entry.id}
                   entry={entry}
+                  providers={availability[entry.title_id] ?? []}
+                  subscribedIds={subscribedIds}
                   onStatusChange={onStatusChange}
                   onPriorityCycle={onPriorityCycle}
                   onDelete={onDelete}

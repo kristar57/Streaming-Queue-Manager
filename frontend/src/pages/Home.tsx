@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useWatchlist } from '../hooks/useWatchlist'
+import { useSubscriptions } from '../hooks/useSubscriptions'
 import { TitleSearch } from '../components/title/TitleSearch'
 import { AddEntryForm } from '../components/title/AddEntryForm'
 import { ListView } from '../components/watchlist/ListView'
@@ -47,7 +48,7 @@ function applySorting(
   field: SortField,
   dir: 'asc' | 'desc'
 ): WatchlistEntryWithTitle[] {
-  const sorted = [...entries].sort((a, b) => {
+  return [...entries].sort((a, b) => {
     let va: string | number = 0
     let vb: string | number = 0
     switch (field) {
@@ -61,7 +62,6 @@ function applySorting(
     if (va > vb) return dir === 'asc' ? 1  : -1
     return 0
   })
-  return sorted
 }
 
 // ---------------------------------------------------------------
@@ -69,7 +69,8 @@ function applySorting(
 // ---------------------------------------------------------------
 export default function Home() {
   const { user, profile, signOut } = useAuth()
-  const { entries, loading, error, addEntry, setStatus, cyclePriority, deleteEntry } = useWatchlist()
+  const { entries, availability, loading, error, addEntry, setStatus, cyclePriority, deleteEntry } = useWatchlist()
+  const { subscribedIds } = useSubscriptions(user?.id)
 
   const [pendingResult, setPendingResult] = useState<TMDBSearchResult | null>(null)
   const [pendingGenres, setPendingGenres] = useState<string[]>([])
@@ -77,20 +78,17 @@ export default function Home() {
   const [showFilters, setShowFilters] = useState(false)
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER_STATE)
 
-  // Collect all unique genres present in the watchlist
   const availableGenres = useMemo(() => {
     const set = new Set<string>()
     for (const e of entries) e.title.genres.forEach((g) => set.add(g))
     return [...set].sort()
   }, [entries])
 
-  // Filter + sort
   const filtered = useMemo(
     () => applySorting(applyFilters(entries, filter), filter.sortField, filter.sortDir),
     [entries, filter]
   )
 
-  // Group by status
   const groups = STATUS_GROUPS.map(({ status, label }) => ({
     label,
     entries: filtered.filter((e) => e.status === status),
@@ -186,6 +184,8 @@ export default function Home() {
         ) : view === 'list' ? (
           <ListView
             groups={groups}
+            availability={availability}
+            subscribedIds={subscribedIds}
             onStatusChange={setStatus}
             onPriorityCycle={cyclePriority}
             onDelete={deleteEntry}
@@ -193,6 +193,8 @@ export default function Home() {
         ) : (
           <CardView
             groups={groups}
+            availability={availability}
+            subscribedIds={subscribedIds}
             onStatusChange={setStatus}
             onPriorityCycle={cyclePriority}
             onDelete={deleteEntry}

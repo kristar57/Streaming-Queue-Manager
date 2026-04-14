@@ -1,14 +1,16 @@
 import { EntryRow } from './EntryRow'
-import type { WatchlistEntryWithTitle, EntryStatus } from '../../types'
+import type { WatchlistEntryWithTitle, EntryStatus, StreamingAvailability } from '../../types'
 
 interface ListViewProps {
   groups: { label: string; entries: WatchlistEntryWithTitle[] }[]
+  availability: Record<string, StreamingAvailability[]>
+  subscribedIds: Set<number>
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
 }
 
-export function ListView({ groups, onStatusChange, onPriorityCycle, onDelete }: ListViewProps) {
+export function ListView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onDelete }: ListViewProps) {
   return (
     <div className="space-y-6">
       {groups.map((group) =>
@@ -22,6 +24,8 @@ export function ListView({ groups, onStatusChange, onPriorityCycle, onDelete }: 
                 <EntryRow
                   key={entry.id}
                   entry={entry}
+                  providers={availability[entry.title_id] ?? []}
+                  subscribedIds={subscribedIds}
                   onStatusChange={onStatusChange}
                   onPriorityCycle={onPriorityCycle}
                   onDelete={onDelete}

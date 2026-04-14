@@ -1,23 +1,27 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { getWatchProviders } from '../lib/tmdb'
+import { getWatchProviders, getFullTitleDetails } from '../lib/tmdb'
 import type {
   WatchlistEntryWithTitle,
   Title,
   EntryFormFields,
   TMDBSearchResult,
   AvailabilityType,
+  StreamingAvailability,
 } from '../types'
 
 // ---------------------------------------------------------------
 // Upsert a title from a TMDB search result, returning its DB id.
 // Uses tmdb_id as the conflict key so re-adding the same title
 // just refreshes the metadata.
+// After the basic upsert, fetches full details + credits from TMDB
+// and stores them in the same row.
 // ---------------------------------------------------------------
 async function upsertTitle(result: TMDBSearchResult, genres: string[]): Promise<string> {
   const isMovie = result.media_type === 'movie'
+  const tmdbType = isMovie ? 'movie' : 'tv'
 
-  const payload: Omit<Title, 'id' | 'created_at'> = {
+  const basicPayload: Omit<Title, 'id' | 'created_at' | 'cast_members' | 'tagline' | 'director' | 'created_by' | 'network' | 'last_air_date' | 'next_episode_air_date' | 'in_production'> = {
     tmdb_id: result.id,
     type: isMovie ? 'movie' : 'show',
     title: result.title ?? result.name ?? '',
@@ -36,12 +40,51 @@ async function upsertTitle(result: TMDBSearchResult, genres: string[]): Promise<
 
   const { data, error } = await supabase
     .from('titles')
-    .upsert(payload, { onConflict: 'tmdb_id' })
+    .upsert(basicPayload, { onConflict: 'tmdb_id' })
     .select('id')
     .single()
 
   if (error) throw error
-  return data.id as string
+  const titleId = data.id as string
+
+  // Fetch full details + credits and enrich the row
+  try {
+    const details = await getFullTitleDetails(tmdbType, result.id)
+
+    const castMembers = (details.credits?.cast ?? [])
+      .slice(0, 5)
+      .map((c) => ({ name: c.name, character: c.character, profile_path: c.profile_path }))
+
+    const directors = (details.credits?.crew ?? [])
+      .filter((c) => c.job === 'Director')
+      .map((c) => c.name)
+      .join(', ') || null
+
+    const enriched: Partial<Title> = {
+      tagline: details.tagline || null,
+      tmdb_status: details.status || null,
+      cast_members: castMembers.length > 0 ? castMembers : null,
+    }
+
+    if (isMovie) {
+      enriched.runtime_minutes = details.runtime ?? null
+      enriched.director = directors
+    } else {
+      enriched.season_count = details.number_of_seasons ?? null
+      enriched.episode_count = details.number_of_episodes ?? null
+      enriched.in_production = details.in_production ?? null
+      enriched.last_air_date = details.last_air_date ?? null
+      enriched.next_episode_air_date = details.next_episode_to_air?.air_date ?? null
+      enriched.created_by = details.created_by?.map((c) => c.name).join(', ') || null
+      enriched.network = details.networks?.[0]?.name ?? null
+    }
+
+    await supabase.from('titles').update(enriched).eq('id', titleId)
+  } catch {
+    // Non-fatal — basic data already saved, enrichment will retry on next add
+  }
+
+  return titleId
 }
 
 // ---------------------------------------------------------------
@@ -90,6 +133,7 @@ async function cacheAvailability(titleId: string, tmdbId: number, type: 'movie' 
 // ---------------------------------------------------------------
 export function useWatchlist() {
   const [entries, setEntries] = useState<WatchlistEntryWithTitle[]>([])
+  const [availability, setAvailability] = useState<Record<string, StreamingAvailability[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -101,9 +145,32 @@ export function useWatchlist() {
 
     if (error) {
       setError(error.message)
-    } else {
-      setEntries((data ?? []) as WatchlistEntryWithTitle[])
+      setLoading(false)
+      return
     }
+
+    const rows = (data ?? []) as WatchlistEntryWithTitle[]
+    setEntries(rows)
+
+    // Fetch streaming availability for all titles in the list
+    const titleIds = [...new Set(rows.map((e) => e.title_id))]
+    if (titleIds.length > 0) {
+      const { data: avRows } = await supabase
+        .from('streaming_availability')
+        .select('*')
+        .in('title_id', titleIds)
+        .eq('country_code', 'US')
+        .eq('availability_type', 'flatrate') // flatrate = included in subscription
+
+      const avMap: Record<string, StreamingAvailability[]> = {}
+      for (const av of avRows ?? []) {
+        const row = av as StreamingAvailability
+        if (!avMap[row.title_id]) avMap[row.title_id] = []
+        avMap[row.title_id].push(row)
+      }
+      setAvailability(avMap)
+    }
+
     setLoading(false)
   }, [])
 
@@ -148,7 +215,7 @@ export function useWatchlist() {
 
       if (error) throw error
 
-      // Fire-and-forget availability cache
+      // Fire-and-forget: cache streaming availability
       const tmdbType = result.media_type === 'movie' ? 'movie' : 'tv'
       cacheAvailability(titleId, result.id, tmdbType)
 
@@ -205,5 +272,5 @@ export function useWatchlist() {
     [fetchEntries]
   )
 
-  return { entries, loading, error, addEntry, updateEntry, setStatus, cyclePriority, deleteEntry, refresh: fetchEntries }
+  return { entries, availability, loading, error, addEntry, updateEntry, setStatus, cyclePriority, deleteEntry, refresh: fetchEntries }
 }
