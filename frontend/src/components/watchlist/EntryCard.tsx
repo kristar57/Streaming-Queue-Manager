@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { cardUrl, thumbnailUrl } from '../../lib/tmdb'
 import { PriorityDot } from '../ui/Badge'
 import { Button } from '../ui/Button'
+import { RatingWidget } from '../ui/RatingWidget'
 import { getTitleStatusChip, formatRuntime, releaseYear } from '../../lib/titleUtils'
 import type { WatchlistEntryWithTitle, EntryStatus, StreamingAvailability } from '../../types'
 import type { TitleQueueRef } from '../../hooks/useSharedQueues'
@@ -28,6 +29,7 @@ interface EntryCardProps {
   onReorder?: (id: string, dir: 'up' | 'down') => void
   onRecommend: (entry: WatchlistEntryWithTitle) => void
   onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
+  onRate: (entry: WatchlistEntryWithTitle, rating: -1 | 1 | 2 | null) => void
   onDelete: (id: string) => void
   onViewDetail: (entry: WatchlistEntryWithTitle) => void
 }
@@ -47,6 +49,7 @@ export function EntryCard({
   onReorder,
   onRecommend,
   onAddToQueue,
+  onRate,
   onDelete,
   onViewDetail,
 }: EntryCardProps) {
@@ -264,6 +267,9 @@ export function EntryCard({
             )}
           </div>
         )}
+
+        {/* Rating */}
+        <RatingWidget rating={entry.user_rating ?? null} onChange={(r) => onRate(entry, r)} />
 
         {/* Actions */}
         <div className="flex flex-col gap-1.5">

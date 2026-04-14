@@ -10,7 +10,7 @@ function isUpcomingByTmdb(title: Title): boolean {
   if (title.next_episode_air_date && new Date(title.next_episode_air_date) > today) return true
   const status = title.tmdb_status
   if (!status) return false
-  return ['In Production', 'Post Production', 'Planned', 'Rumored'].includes(status)
+  return ['Returning Series', 'In Production', 'Post Production', 'Planned', 'Rumored'].includes(status)
 }
 
 function isUpcomingForQueue(qt: QueueTitleWithMemberEntries, currentUserId: string): boolean {
@@ -416,8 +416,8 @@ export function SharedQueueView({
   return (
     <div className="space-y-6">
       {renderGroup(proposed,   'Proposed',     proposed)}
-      {renderGroup(upcoming,   'Upcoming',     upcoming)}
       {renderGroup(upNext,     'Up next',      active)}
+      {renderGroup(upcoming,   'Upcoming',     upcoming)}
       {renderGroup(allWatched, 'All watched',  active)}
       {renderGroup(shelved,    'On the shelf', shelved)}
     </div>

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
+import { enrichTitle } from '../hooks/useWatchlist'
 
 // ---------------------------------------------------------------
 // Helpers
@@ -131,6 +132,16 @@ export default function Admin() {
   const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null)
   const [updatingDisabledId, setUpdatingDisabledId] = useState<string | null>(null)
   const [roleError, setRoleError] = useState('')
+
+  // Title sync
+  interface TitleRow { id: string; title: string; type: string; tmdb_id: number; tmdb_status: string | null; last_synced_at: string }
+  const [syncTitles, setSyncTitles] = useState<TitleRow[]>([])
+  const [syncLoaded, setSyncLoaded] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncProgress, setSyncProgress] = useState(0)
+  const [syncTotal, setSyncTotal] = useState(0)
+  const [syncError, setSyncError] = useState('')
+  const [syncDone, setSyncDone] = useState(false)
 
   // Grant admin — separate section
   const [adminSearch, setAdminSearch] = useState('')
@@ -298,6 +309,58 @@ export default function Admin() {
     setAdminSearch('')
     setAdminConfirmPending(false)
     setGrantingAdmin(false)
+  }
+
+  async function loadSyncTitles() {
+    const { data } = await supabase
+      .from('titles')
+      .select('id, title, type, tmdb_id, tmdb_status, last_synced_at')
+      .order('last_synced_at', { ascending: true })
+    setSyncTitles((data ?? []) as TitleRow[])
+    setSyncLoaded(true)
+  }
+
+  async function handleSyncStale() {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString()
+    const stale = syncTitles.filter((t) => t.last_synced_at < sevenDaysAgo)
+    if (stale.length === 0) return
+    setSyncing(true)
+    setSyncProgress(0)
+    setSyncTotal(stale.length)
+    setSyncError('')
+    setSyncDone(false)
+    let done = 0
+    for (const t of stale) {
+      try {
+        await enrichTitle(t.id, t.tmdb_id, t.type === 'movie' ? 'movie' : 'tv')
+        done++
+        setSyncProgress(done)
+        await new Promise((r) => setTimeout(r, 150))
+      } catch { /* skip failed titles */ }
+    }
+    setSyncing(false)
+    setSyncDone(true)
+    await loadSyncTitles()
+  }
+
+  async function handleSyncAll() {
+    setSyncing(true)
+    setSyncProgress(0)
+    setSyncTotal(syncTitles.length)
+    setSyncError('')
+    setSyncDone(false)
+    let done = 0
+    for (const t of syncTitles) {
+      try {
+        await enrichTitle(t.id, t.tmdb_id, t.type === 'movie' ? 'movie' : 'tv')
+        done++
+        setSyncProgress(done)
+        await new Promise((r) => setTimeout(r, 150))
+      } catch { /* skip failed titles */ }
+    }
+    setSyncing(false)
+    setSyncDone(true)
+    await loadSyncTitles()
   }
 
   function handleCopy(key: string, text: string) {
@@ -605,6 +668,99 @@ export default function Admin() {
             <strong className="text-white">Sponsor</strong> — can send invites. &nbsp;
             <strong className="text-white">Delegate</strong> — can invite and enable others to invite.
           </p>
+        </Section>
+
+        {/* ── Title sync ── */}
+        <Section title="TMDB title sync">
+          <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl p-4 space-y-4">
+            <p className="text-xs text-[var(--text-secondary)]">
+              Re-fetches metadata (status, cast, runtime, air dates) from TMDB for all titles in the database.
+              Stale = not synced in the last 7 days. The app also syncs stale titles automatically in the background on sign-on.
+            </p>
+
+            {!syncLoaded ? (
+              <button
+                onClick={loadSyncTitles}
+                className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white font-medium rounded-lg text-sm transition-colors cursor-pointer"
+              >
+                Load title data
+              </button>
+            ) : (
+              <div className="space-y-3">
+                {/* Summary */}
+                {(() => {
+                  const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString()
+                  const staleCount = syncTitles.filter((t) => t.last_synced_at < sevenDaysAgo).length
+                  return (
+                    <div className="flex items-center gap-4 text-sm flex-wrap">
+                      <span className="text-white">{syncTitles.length} titles total</span>
+                      <span className={staleCount > 0 ? 'text-yellow-400' : 'text-green-400'}>
+                        {staleCount > 0 ? `${staleCount} stale` : '✓ All up to date'}
+                      </span>
+                    </div>
+                  )
+                })()}
+
+                {/* Progress */}
+                {syncing && (
+                  <div className="space-y-1.5">
+                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[var(--accent)] transition-all duration-300"
+                        style={{ width: `${syncTotal > 0 ? (syncProgress / syncTotal) * 100 : 0}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      Syncing {syncProgress} / {syncTotal}…
+                    </p>
+                  </div>
+                )}
+
+                {syncDone && !syncing && (
+                  <p className="text-sm text-green-400">✓ Sync complete</p>
+                )}
+
+                {syncError && <p className="text-sm text-red-400">{syncError}</p>}
+
+                {/* Actions */}
+                {!syncing && (
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={handleSyncStale}
+                      disabled={syncing}
+                      className="px-4 py-2 bg-[var(--accent)] hover:opacity-90 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-opacity cursor-pointer"
+                    >
+                      Sync stale titles
+                    </button>
+                    <button
+                      onClick={handleSyncAll}
+                      disabled={syncing}
+                      className="px-4 py-2 bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white font-medium rounded-lg text-sm transition-colors cursor-pointer"
+                    >
+                      Sync all ({syncTitles.length})
+                    </button>
+                  </div>
+                )}
+
+                {/* Title list */}
+                <div className="divide-y divide-white/5 border border-white/10 rounded-xl overflow-hidden max-h-72 overflow-y-auto">
+                  {syncTitles.map((t) => {
+                    const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString()
+                    const isStale = t.last_synced_at < sevenDaysAgo
+                    const syncedDate = new Date(t.last_synced_at).toLocaleDateString()
+                    return (
+                      <div key={t.id} className="flex items-center gap-3 px-3 py-2 text-xs">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isStale ? 'bg-yellow-400' : 'bg-green-400'}`} />
+                        <span className="flex-1 text-white truncate">{t.title}</span>
+                        <span className="text-[var(--text-secondary)] flex-shrink-0">{t.tmdb_status ?? '—'}</span>
+                        <span className="text-[var(--text-secondary)] flex-shrink-0 opacity-60">{syncedDate}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </Section>
 
         {/* ── Grant admin — intentional, separate action ── */}

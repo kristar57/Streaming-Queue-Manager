@@ -42,9 +42,24 @@ export function useTitleQueueMap(userId: string | undefined, queues: SharedQueue
     setMap(result)
   }, [userId, queues])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => {
+    fetch()
 
-  return map
+    if (!userId || queues.length === 0) return
+    const queueIds = queues.map((q) => q.id)
+    const channel = supabase
+      .channel(`title_queue_map_${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'queue_titles', filter: `queue_id=in.(${queueIds.join(',')})` },
+        fetch
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [fetch, userId, queues])
+
+  return { map, refresh: fetch }
 }
 
 // ---------------------------------------------------------------

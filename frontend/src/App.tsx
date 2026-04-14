@@ -113,6 +113,7 @@ export default function App() {
   const [profileReady, setProfileReady] = useState(false)
   const [isRecovery, setIsRecovery] = useState(false)
   const [consentAccepted, setConsentAccepted] = useState<boolean | null>(null)
+  const [consentIsUpdate, setConsentIsUpdate] = useState(false)
 
   const SESSION_CONSENT_KEY = `consent_accepted_${CURRENT_POLICY_VERSION}`
 
@@ -134,8 +135,11 @@ export default function App() {
         return
       }
       setProfile(data as Profile)
-      const accepted = !!data.consent_accepted_at
+      const hasEverAccepted = !!data.consent_accepted_at
+      const onCurrentVersion = data.consent_policy_version === CURRENT_POLICY_VERSION
+      const accepted = hasEverAccepted && onCurrentVersion
       if (accepted) sessionStorage.setItem(SESSION_CONSENT_KEY, '1')
+      setConsentIsUpdate(hasEverAccepted && !onCurrentVersion)
       setConsentAccepted(accepted)
     } else {
       setConsentAccepted(false)
@@ -204,6 +208,7 @@ export default function App() {
        !['/terms', '/privacy'].includes(window.location.pathname) && (
         <ConsentScreen
           userId={user.id}
+          isUpdate={consentIsUpdate}
           onAccepted={() => {
             sessionStorage.setItem(SESSION_CONSENT_KEY, '1')
             setConsentAccepted(true)

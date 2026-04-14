@@ -18,6 +18,7 @@ export interface Profile {
   invited_by: string | null
   consent_accepted_at: string | null
   consent_policy_version: string | null
+  enable_recommendations: boolean
   created_at: string
 }
 
@@ -78,6 +79,7 @@ export interface WatchlistEntry {
   notes: string | null
   date_started: string | null
   date_completed: string | null
+  user_rating: -1 | 1 | 2 | null
   created_at: string
   updated_at: string
 }
@@ -264,4 +266,4 @@ export const DEFAULT_FILTER_STATE: FilterState = {
   sortDir: 'desc',
 }
 
-export const CURRENT_POLICY_VERSION = '1.0'
+export const CURRENT_POLICY_VERSION = '2026-04'

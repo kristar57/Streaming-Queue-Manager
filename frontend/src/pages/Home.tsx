@@ -3,6 +3,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useWatchlist } from '../hooks/useWatchlist'
 import { useSubscriptions } from '../hooks/useSubscriptions'
 import { useSharedQueues, useQueueDetail, useTitleQueueMap } from '../hooks/useSharedQueues'
+import { usePersonalRecs, usePartnerRecs, useGroupRecs } from '../hooks/useAutoRecs'
+import { PersonalRecsPanel, GroupRecsPanel } from '../components/recommendations/RecsSection'
 import { TitleSearch } from '../components/title/TitleSearch'
 import { AddEntryForm } from '../components/title/AddEntryForm'
 import { EditEntryForm } from '../components/title/EditEntryForm'
@@ -22,6 +24,7 @@ import { TitleDetailModal } from '../components/title/TitleDetailModal'
 import { supabase } from '../lib/supabase'
 import { upsertTitle, cacheAvailability } from '../hooks/useWatchlist'
 import { Link } from 'react-router-dom'
+import { PolicyFooter } from '../components/ui/PolicyFooter'
 import type {
   TMDBSearchResult,
   EntryFormFields,
@@ -90,15 +93,41 @@ function sortUpNext(entries: WatchlistEntryWithTitle[]): WatchlistEntryWithTitle
 // ---------------------------------------------------------------
 export default function Home() {
   const { user, profile, signOut } = useAuth()
-  const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry, syncAllAvailability } = useWatchlist(user?.id)
+  const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, rateEntry, deleteEntry, reorderEntry, syncAllAvailability } = useWatchlist(user?.id)
   const { subscriptions, subscribedIds, toggleSubscription } = useSubscriptions(user?.id)
   const { queues } = useSharedQueues(user?.id)
-  const titleQueueMap = useTitleQueueMap(user?.id, queues)
+  const { map: titleQueueMap, refresh: refreshTitleQueueMap } = useTitleQueueMap(user?.id, queues)
+
+  // Recommendations opt-in — mirrors profile flag, can be toggled per-session
+  const [recsEnabled, setRecsEnabled] = useState<boolean>(() => profile?.enable_recommendations ?? true)
+
+  // Collect unique partners from all shared queues (for partner discovery)
+  const allPartners = useMemo(() => {
+    // We gather partners from the queue members hook below, but we need a stable
+    // list across all queues. For now derive from entries authored by others.
+    const map = new Map<string, string>()
+    for (const e of entries) {
+      if (e.profile && e.user_id !== user?.id) map.set(e.user_id, e.profile.display_name)
+    }
+    return [...map.entries()].map(([id, name]) => ({ id, name }))
+  }, [entries, user?.id])
+
+  const { recs: personalRecs, loading: personalRecsLoading } = usePersonalRecs(user?.id, entries, recsEnabled)
+  const partnerRecs = usePartnerRecs(user?.id, entries, allPartners, recsEnabled)
+
+  async function handleToggleRecs(enabled: boolean) {
+    setRecsEnabled(enabled)
+    if (user) {
+      await supabase.from('profiles').update({ enable_recommendations: enabled }).eq('id', user.id)
+    }
+  }
 
   // Active queue: null = personal list, string = shared queue id
   const [activeQueueId, setActiveQueueId] = useState<string | null>(null)
 
   const { titles: queueTitles, loading: queueLoading, approveTitle, shelfTitle, removeTitle, reorderTitle, refresh: refreshQueueDetail } = useQueueDetail(activeQueueId)
+
+  const { recs: groupRecs, loading: groupRecsLoading } = useGroupRecs(activeQueueId, queueTitles, recsEnabled)
 
   const [queueSearchBusy, setQueueSearchBusy] = useState(false)
   const [addAsProposal, setAddAsProposal] = useState(false)
@@ -174,6 +203,11 @@ export default function Home() {
   const hasActiveFilter =
     filter.search || filter.statuses.length || filter.types.length ||
     filter.genres.length || filter.priorities.length || filter.viewerIds.length
+
+  async function handleRateEntry(entry: import('../types').WatchlistEntryWithTitle, rating: -1 | 1 | 2 | null) {
+    if (!user) return
+    await rateEntry(entry.id, rating, user.id)
+  }
 
   async function handleAddEntry(fields: EntryFormFields) {
     if (!pendingResult || !user) return
@@ -410,18 +444,28 @@ export default function Home() {
           queueLoading ? (
             <div className="text-center py-16 text-[var(--text-secondary)]">Loading…</div>
           ) : (
-            <SharedQueueView
-              titles={queueTitles}
-              availability={availability}
-              currentUserId={user?.id ?? ''}
-              onReorder={reorderTitle}
-              onApprove={approveTitle}
-              onShelf={shelfTitle}
-              onRemove={removeTitle}
-              onMyStatusChange={setStatus}
-              onEdit={setEditingEntry}
-              onViewDetail={setDetailEntry}
-            />
+            <>
+              <SharedQueueView
+                titles={queueTitles}
+                availability={availability}
+                currentUserId={user?.id ?? ''}
+                onReorder={reorderTitle}
+                onApprove={approveTitle}
+                onShelf={shelfTitle}
+                onRemove={removeTitle}
+                onMyStatusChange={setStatus}
+                onEdit={setEditingEntry}
+                onViewDetail={setDetailEntry}
+              />
+              <GroupRecsPanel
+                recs={groupRecs}
+                loading={groupRecsLoading}
+                onSelect={(result) => {
+                  setPendingResult(result)
+                  setPendingGenres([])
+                }}
+              />
+            </>
           )
         ) : (
           // Personal list view
@@ -449,6 +493,7 @@ export default function Home() {
               onReorder={reorderEntry}
               onRecommend={setRecommendEntry}
               onAddToQueue={queues.length > 0 ? setAddToQueueEntry : undefined}
+              onRate={handleRateEntry}
               onDelete={deleteEntry}
               onViewDetail={setDetailEntry}
             />
@@ -466,12 +511,31 @@ export default function Home() {
               onReorder={reorderEntry}
               onRecommend={setRecommendEntry}
               onAddToQueue={queues.length > 0 ? setAddToQueueEntry : undefined}
+              onRate={handleRateEntry}
               onDelete={deleteEntry}
               onViewDetail={setDetailEntry}
             />
           )
         )}
+
+        {/* Personal recommendations panel — only on personal list view */}
+        {activeQueueId === null && !loading && (
+          <PersonalRecsPanel
+            personalRecs={personalRecs}
+            personalLoading={personalRecsLoading}
+            partnerRecs={partnerRecs}
+            myEntries={entries}
+            recsEnabled={recsEnabled}
+            onToggleEnabled={handleToggleRecs}
+            onSelect={(result) => {
+              setPendingResult(result)
+              setPendingGenres([])
+            }}
+          />
+        )}
       </main>
+
+      <PolicyFooter />
 
       {/* Add entry modal */}
       {pendingResult && (
@@ -514,6 +578,7 @@ export default function Home() {
               status: asProposal ? 'proposed' : 'active',
             })
             if (error && error.code !== '23505') throw error
+            await refreshTitleQueueMap()
           }}
           onClose={() => setAddToQueueEntry(null)}
         />

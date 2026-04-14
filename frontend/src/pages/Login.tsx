@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { PolicyFooter } from '../components/ui/PolicyFooter'
 
 type Mode = 'login' | 'reset'
 
@@ -166,6 +167,8 @@ export default function Login() {
           </div>
         )}
       </div>
+
+      <PolicyFooter />
     </div>
   )
 }

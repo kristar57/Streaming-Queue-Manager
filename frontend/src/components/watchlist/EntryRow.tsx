@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { thumbnailUrl } from '../../lib/tmdb'
 import { PriorityDot } from '../ui/Badge'
+import { RatingWidget } from '../ui/RatingWidget'
 import { getTitleStatusChip, formatRuntime, releaseYear } from '../../lib/titleUtils'
 import type { WatchlistEntryWithTitle, EntryStatus, StreamingAvailability } from '../../types'
 import type { TitleQueueRef } from '../../hooks/useSharedQueues'
@@ -20,6 +21,7 @@ interface EntryRowProps {
   onReorder?: (id: string, dir: 'up' | 'down') => void
   onRecommend: (entry: WatchlistEntryWithTitle) => void
   onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
+  onRate: (entry: WatchlistEntryWithTitle, rating: -1 | 1 | 2 | null) => void
   onDelete: (id: string) => void
   onViewDetail: (entry: WatchlistEntryWithTitle) => void
 }
@@ -46,6 +48,7 @@ export function EntryRow({
   onReorder,
   onRecommend,
   onAddToQueue,
+  onRate,
   onDelete,
   onViewDetail,
 }: EntryRowProps) {
@@ -194,6 +197,9 @@ export function EntryRow({
       {/* Actions row — always visible on mobile via expand, desktop via hover group */}
       {expanded && (
         <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(36px+10px+8px)]">
+          <div className="w-full">
+            <RatingWidget rating={entry.user_rating ?? null} onChange={(r) => onRate(entry, r)} />
+          </div>
           {(entry.status === 'watching' || entry.status === 'want_to_watch') && title.type === 'show' && (
             <button
               onClick={() => onCaughtUpToggle(entry)}

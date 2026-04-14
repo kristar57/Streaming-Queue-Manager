@@ -15,11 +15,12 @@ interface ListViewProps {
   onReorder: (id: string, dir: 'up' | 'down') => void
   onRecommend: (entry: WatchlistEntryWithTitle) => void
   onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
+  onRate: (entry: WatchlistEntryWithTitle, rating: -1 | 1 | 2 | null) => void
   onDelete: (id: string) => void
   onViewDetail: (entry: WatchlistEntryWithTitle) => void
 }
 
-export function ListView({ groups, availability, subscribedIds, titleQueueMap, currentUserId, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onAddToQueue, onDelete, onViewDetail }: ListViewProps) {
+export function ListView({ groups, availability, subscribedIds, titleQueueMap, currentUserId, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onAddToQueue, onRate, onDelete, onViewDetail }: ListViewProps) {
   return (
     <div className="space-y-6">
       {groups.map((group) =>
@@ -46,6 +47,7 @@ export function ListView({ groups, availability, subscribedIds, titleQueueMap, c
                   onReorder={group.isUpNext ? onReorder : undefined}
                   onRecommend={onRecommend}
                   onAddToQueue={onAddToQueue}
+                  onRate={onRate}
                   onDelete={onDelete}
                   onViewDetail={onViewDetail}
                 />

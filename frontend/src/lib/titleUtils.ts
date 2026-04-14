@@ -36,8 +36,8 @@ export function getTitleStatusChip(
   const status = title.tmdb_status
   if (status === 'Returning Series') {
     return title.in_production
-      ? { label: 'Returning', color: 'blue' }
-      : null
+      ? { label: 'In production', color: 'blue' }
+      : { label: 'Returning', color: 'yellow' }
   }
   if (status === 'Ended') return { label: 'Series ended', color: 'gray' }
   if (status === 'Canceled') return { label: 'Canceled', color: 'red' }

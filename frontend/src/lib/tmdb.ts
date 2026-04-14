@@ -149,6 +149,20 @@ export async function getTrailerKey(
   return (official ?? any)?.key ?? null
 }
 
+// ---------------------------------------------------------------
+// Recommendations — titles similar to a given title (TMDB-generated)
+// ---------------------------------------------------------------
+export async function getTmdbRecommendations(
+  type: 'movie' | 'tv',
+  tmdbId: number
+): Promise<import('../types').TMDBSearchResult[]> {
+  const data = await tmdbCall<{ results: import('../types').TMDBSearchResult[] }>(
+    `/${type}/${tmdbId}/recommendations`
+  )
+  // Ensure media_type is set since the API sometimes omits it
+  return (data.results ?? []).map((r) => ({ ...r, media_type: type === 'movie' ? 'movie' : 'tv' }))
+}
+
 export interface TMDBProvider {
   provider_id: number
   provider_name: string

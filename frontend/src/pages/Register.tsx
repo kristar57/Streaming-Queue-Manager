@@ -3,6 +3,7 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { Loader2, Mail, Lock, Eye, EyeOff, User, Ticket, Check, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { PolicyFooter } from '../components/ui/PolicyFooter'
 
 type Step = 'invite' | 'details' | 'done'
 
@@ -282,6 +283,8 @@ export default function Register() {
           </div>
         )}
       </div>
+
+      <PolicyFooter />
     </div>
   )
 }

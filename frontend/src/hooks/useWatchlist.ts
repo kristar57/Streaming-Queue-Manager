@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { getWatchProviders, getFullTitleDetails } from '../lib/tmdb'
 import type {
@@ -11,11 +11,52 @@ import type {
 } from '../types'
 
 // ---------------------------------------------------------------
+// Re-fetch full TMDB metadata for an existing title row and update it.
+// Exported so the admin page and background sign-on sync can use it.
+// ---------------------------------------------------------------
+export async function enrichTitle(
+  titleId: string,
+  tmdbId: number,
+  type: 'movie' | 'tv'
+): Promise<void> {
+  const details = await getFullTitleDetails(type, tmdbId)
+
+  const castMembers = (details.credits?.cast ?? [])
+    .slice(0, 5)
+    .map((c) => ({ name: c.name, character: c.character, profile_path: c.profile_path }))
+
+  const directors = (details.credits?.crew ?? [])
+    .filter((c) => c.job === 'Director')
+    .map((c) => c.name)
+    .join(', ') || null
+
+  const enriched: Partial<Title> & { last_synced_at: string } = {
+    tagline: details.tagline || null,
+    tmdb_status: details.status || null,
+    cast_members: castMembers.length > 0 ? castMembers : null,
+    last_synced_at: new Date().toISOString(),
+  }
+
+  if (type === 'movie') {
+    enriched.runtime_minutes = details.runtime ?? null
+    enriched.director = directors
+  } else {
+    enriched.season_count = details.number_of_seasons ?? null
+    enriched.episode_count = details.number_of_episodes ?? null
+    enriched.in_production = details.in_production ?? null
+    enriched.last_air_date = details.last_air_date ?? null
+    enriched.next_episode_air_date = details.next_episode_to_air?.air_date ?? null
+    enriched.created_by = details.created_by?.map((c) => c.name).join(', ') || null
+    enriched.network = details.networks?.[0]?.name ?? null
+  }
+
+  await supabase.from('titles').update(enriched).eq('id', titleId)
+}
+
+// ---------------------------------------------------------------
 // Upsert a title from a TMDB search result, returning its DB id.
 // Uses tmdb_id as the conflict key so re-adding the same title
 // just refreshes the metadata.
-// After the basic upsert, fetches full details + credits from TMDB
-// and stores them in the same row.
 // ---------------------------------------------------------------
 export async function upsertTitle(result: TMDBSearchResult, genres: string[]): Promise<string> {
   const isMovie = result.media_type === 'movie'
@@ -49,39 +90,9 @@ export async function upsertTitle(result: TMDBSearchResult, genres: string[]): P
 
   // Fetch full details + credits and enrich the row
   try {
-    const details = await getFullTitleDetails(tmdbType, result.id)
-
-    const castMembers = (details.credits?.cast ?? [])
-      .slice(0, 5)
-      .map((c) => ({ name: c.name, character: c.character, profile_path: c.profile_path }))
-
-    const directors = (details.credits?.crew ?? [])
-      .filter((c) => c.job === 'Director')
-      .map((c) => c.name)
-      .join(', ') || null
-
-    const enriched: Partial<Title> = {
-      tagline: details.tagline || null,
-      tmdb_status: details.status || null,
-      cast_members: castMembers.length > 0 ? castMembers : null,
-    }
-
-    if (isMovie) {
-      enriched.runtime_minutes = details.runtime ?? null
-      enriched.director = directors
-    } else {
-      enriched.season_count = details.number_of_seasons ?? null
-      enriched.episode_count = details.number_of_episodes ?? null
-      enriched.in_production = details.in_production ?? null
-      enriched.last_air_date = details.last_air_date ?? null
-      enriched.next_episode_air_date = details.next_episode_to_air?.air_date ?? null
-      enriched.created_by = details.created_by?.map((c) => c.name).join(', ') || null
-      enriched.network = details.networks?.[0]?.name ?? null
-    }
-
-    await supabase.from('titles').update(enriched).eq('id', titleId)
+    await enrichTitle(titleId, result.id, tmdbType)
   } catch {
-    // Non-fatal — basic data already saved, enrichment will retry on next add
+    // Non-fatal — basic data already saved, enrichment will retry on next sync
   }
 
   return titleId
@@ -136,6 +147,7 @@ export function useWatchlist(userId?: string) {
   const [availability, setAvailability] = useState<Record<string, StreamingAvailability[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const syncStarted = useRef(false)
 
   const fetchEntries = useCallback(async () => {
     let query = supabase
@@ -202,6 +214,40 @@ export function useWatchlist(userId?: string) {
 
     return () => { supabase.removeChannel(channel) }
   }, [fetchEntries])
+
+  // Background TMDB metadata sync — runs once per session after initial load.
+  // Only touches titles not synced in the last 7 days, one at a time with a
+  // small delay to stay well within TMDB rate limits.
+  useEffect(() => {
+    if (loading || syncStarted.current || !userId) return
+    syncStarted.current = true
+
+    const sessionKey = `tmdb_sync_${userId}`
+    if (sessionStorage.getItem(sessionKey)) return
+    sessionStorage.setItem(sessionKey, '1')
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString()
+    const seen = new Set<string>()
+    const stale = entries
+      .filter((e) => {
+        if (seen.has(e.title_id)) return false
+        seen.add(e.title_id)
+        return e.title.last_synced_at < sevenDaysAgo
+      })
+      .map((e) => ({ id: e.title_id, tmdbId: e.title.tmdb_id, type: (e.title.type === 'movie' ? 'movie' : 'tv') as 'movie' | 'tv' }))
+
+    if (stale.length === 0) return
+
+    ;(async () => {
+      for (const t of stale) {
+        try {
+          await enrichTitle(t.id, t.tmdbId, t.type)
+          await new Promise((r) => setTimeout(r, 150))
+        } catch { /* non-fatal */ }
+      }
+      fetchEntries()
+    })()
+  }, [loading, userId, entries, fetchEntries])
 
   // Add a title from a TMDB search result and create a watchlist entry
   const addEntry = useCallback(
@@ -280,6 +326,22 @@ export function useWatchlist(userId?: string) {
     [updateEntry]
   )
 
+  // Set or clear a rating on an entry (-1 = Pass, 1 = Good, 2 = Loved, null = clear)
+  // Clearing the session rec cache so recs regenerate with the new signal.
+  const rateEntry = useCallback(
+    async (entryId: string, rating: -1 | 1 | 2 | null, userId: string) => {
+      const { error } = await supabase
+        .from('watchlist_entries')
+        .update({ user_rating: rating })
+        .eq('id', entryId)
+      if (error) throw error
+      // Invalidate cached recs so they regenerate with the new signal
+      sessionStorage.removeItem(`personal_recs_${userId}`)
+      await fetchEntries()
+    },
+    [fetchEntries]
+  )
+
   const deleteEntry = useCallback(
     async (entryId: string) => {
       const { error } = await supabase
@@ -340,5 +402,5 @@ export function useWatchlist(userId?: string) {
     await fetchEntries()
   }, [entries, fetchEntries])
 
-  return { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry, syncAllAvailability, refresh: fetchEntries }
+  return { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, rateEntry, deleteEntry, reorderEntry, syncAllAvailability, refresh: fetchEntries }
 }
