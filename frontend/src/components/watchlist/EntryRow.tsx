@@ -10,6 +10,7 @@ interface EntryRowProps {
   providers: StreamingAvailability[]
   subscribedIds: Set<number>
   sharedQueues?: TitleQueueRef[]
+  currentUserId?: string
   canMoveUp?: boolean
   canMoveDown?: boolean
   onStatusChange: (id: string, status: EntryStatus) => void
@@ -35,6 +36,7 @@ export function EntryRow({
   providers,
   subscribedIds,
   sharedQueues,
+  currentUserId,
   canMoveUp,
   canMoveDown,
   onStatusChange,
@@ -125,7 +127,7 @@ export function EntryRow({
             {title.genres.slice(0, 2).map((g) => <span key={g}>· {g}</span>)}
             {runtime && <span>· {runtime}</span>}
             {title.tmdb_rating && <span className="text-yellow-400">· ★ {title.tmdb_rating.toFixed(1)}</span>}
-            {entry.profile && <span className="opacity-60">· {entry.profile.display_name}</span>}
+            {entry.profile && entry.user_id !== currentUserId && <span className="opacity-60">· {entry.profile.display_name}</span>}
             {statusChip && (
               <span className={`sm:hidden px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${CHIP_COLORS[statusChip.color]}`}>
                 {statusChip.label}
@@ -142,8 +144,8 @@ export function EntryRow({
                   title={q.status === 'active' ? `In shared queue: ${q.queueName}` : q.status === 'proposed' ? `Proposed in: ${q.queueName}` : `On the shelf in: ${q.queueName}`}
                   className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
                     q.status === 'active'
-                      ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-                      : 'bg-white/5 text-[var(--text-secondary)] border-white/10'
+                      ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                      : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
                   }`}
                 >
                   <span>👥</span>

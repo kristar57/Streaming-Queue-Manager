@@ -7,6 +7,7 @@ interface ListViewProps {
   availability: Record<string, StreamingAvailability[]>
   subscribedIds: Set<number>
   titleQueueMap?: Record<string, TitleQueueRef[]>
+  currentUserId?: string
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
   onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
@@ -18,7 +19,7 @@ interface ListViewProps {
   onViewDetail: (entry: WatchlistEntryWithTitle) => void
 }
 
-export function ListView({ groups, availability, subscribedIds, titleQueueMap, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onAddToQueue, onDelete, onViewDetail }: ListViewProps) {
+export function ListView({ groups, availability, subscribedIds, titleQueueMap, currentUserId, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onAddToQueue, onDelete, onViewDetail }: ListViewProps) {
   return (
     <div className="space-y-6">
       {groups.map((group) =>
@@ -35,6 +36,7 @@ export function ListView({ groups, availability, subscribedIds, titleQueueMap, o
                   providers={availability[entry.title_id] ?? []}
                   subscribedIds={subscribedIds}
                   sharedQueues={titleQueueMap?.[entry.title_id]}
+                  currentUserId={currentUserId}
                   canMoveUp={group.isUpNext && idx > 0}
                   canMoveDown={group.isUpNext && idx < group.entries.length - 1}
                   onStatusChange={onStatusChange}

@@ -132,10 +132,10 @@ export default function Home() {
   const availableViewers = useMemo(() => {
     const map = new Map<string, string>()
     for (const e of entries) {
-      if (e.profile) map.set(e.profile.id, e.profile.display_name)
+      if (e.profile && e.profile.id !== user?.id) map.set(e.profile.id, e.profile.display_name)
     }
     return [...map.entries()].map(([id, display_name]) => ({ id, display_name }))
-  }, [entries])
+  }, [entries, user?.id])
 
   const availableGenres = useMemo(() => {
     const set = new Set<string>()
@@ -439,6 +439,7 @@ export default function Home() {
               availability={availability}
               subscribedIds={subscribedIds}
               titleQueueMap={titleQueueMap}
+              currentUserId={user?.id}
               onStatusChange={setStatus}
               onPriorityCycle={cyclePriority}
               onCaughtUpToggle={toggleCaughtUp}
@@ -455,6 +456,7 @@ export default function Home() {
               availability={availability}
               subscribedIds={subscribedIds}
               titleQueueMap={titleQueueMap}
+              currentUserId={user?.id}
               onStatusChange={setStatus}
               onPriorityCycle={cyclePriority}
               onCaughtUpToggle={toggleCaughtUp}
