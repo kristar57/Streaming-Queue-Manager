@@ -9,6 +9,7 @@ import ConsentScreen from './components/ui/ConsentScreen'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Home from './pages/Home'
+import Admin from './pages/Admin'
 
 // ── Spinner ───────────────────────────────────────────────────
 function Spinner() {
@@ -209,6 +210,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <Home />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <RequireAuth>
+                <Admin />
               </RequireAuth>
             }
           />

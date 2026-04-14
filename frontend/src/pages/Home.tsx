@@ -17,6 +17,7 @@ import { AddToQueueModal } from '../components/queue/AddToQueueModal'
 import { QueueSettingsModal } from '../components/queue/QueueSettingsModal'
 import { Button } from '../components/ui/Button'
 import { supabase } from '../lib/supabase'
+import { Link } from 'react-router-dom'
 import type {
   TMDBSearchResult,
   EntryFormFields,
@@ -205,6 +206,16 @@ export default function Home() {
           </span>
 
           <div className="flex-1" />
+
+          {/* Admin link — visible to admins only */}
+          {profile?.is_admin && (
+            <Link
+              to="/admin"
+              className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors px-2 py-1 rounded border border-white/10 hidden sm:block"
+            >
+              Admin
+            </Link>
+          )}
 
           {/* Recommendations bell */}
           <button
