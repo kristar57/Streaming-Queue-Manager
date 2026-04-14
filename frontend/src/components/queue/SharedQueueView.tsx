@@ -219,19 +219,21 @@ function QueueRow({
               onClick={() => onRemove(qt.id)}
               className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
             >
-              Cancel proposal
+              Withdraw proposal
             </button>
           )}
 
-          {/* Shelved — any member can add to queue or remove */}
+          {/* Shelved — non-proposer can add to queue; anyone can remove */}
           {isShelved && (
             <>
-              <button
-                onClick={() => onApprove(qt.id)}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30 transition-colors cursor-pointer"
-              >
-                ✓ Add to queue
-              </button>
+              {!isProposer && (
+                <button
+                  onClick={() => onApprove(qt.id)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30 transition-colors cursor-pointer"
+                >
+                  ✓ Add to queue
+                </button>
+              )}
               {confirmRemove ? (
                 <>
                   <button
