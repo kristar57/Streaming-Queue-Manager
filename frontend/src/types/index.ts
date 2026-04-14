@@ -168,6 +168,48 @@ export interface WatchlistEntryWithTitle extends WatchlistEntry {
   profile?: { id: string; display_name: string }
 }
 
+// ============================================================
+// Shared queues
+// ============================================================
+
+export interface SharedQueue {
+  id: string
+  name: string
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface QueueMember {
+  queue_id: string
+  user_id: string
+  joined_at: string
+  // Joined
+  profile?: { id: string; display_name: string }
+}
+
+export interface QueueTitle {
+  id: string
+  queue_id: string
+  title_id: string
+  added_by: string
+  queue_position: number | null
+  created_at: string
+  // Joined
+  title?: Title
+  added_by_profile?: { id: string; display_name: string }
+}
+
+// A title in a shared queue with each member's watchlist entry attached
+export interface QueueTitleWithMemberEntries extends QueueTitle {
+  title: Title
+  member_entries: Array<{
+    user_id: string
+    display_name: string
+    entry: WatchlistEntryWithTitle | null
+  }>
+}
+
 export interface Recommendation {
   id: string
   from_user_id: string

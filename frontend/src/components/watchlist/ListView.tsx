@@ -11,16 +11,17 @@ interface ListViewProps {
   onEdit: (entry: WatchlistEntryWithTitle) => void
   onReorder: (id: string, dir: 'up' | 'down') => void
   onRecommend: (entry: WatchlistEntryWithTitle) => void
+  onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
 }
 
-export function ListView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onDelete }: ListViewProps) {
+export function ListView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onAddToQueue, onDelete }: ListViewProps) {
   return (
     <div className="space-y-6">
       {groups.map((group) =>
         group.entries.length === 0 ? null : (
           <section key={group.label}>
-            <h2 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider px-4 mb-1">
+            <h2 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider px-3 mb-1">
               {group.label} ({group.entries.length})
             </h2>
             <div className="bg-[var(--bg-card)] rounded-xl border border-white/10 divide-y divide-white/5 overflow-hidden">
@@ -38,6 +39,7 @@ export function ListView({ groups, availability, subscribedIds, onStatusChange, 
                   onEdit={onEdit}
                   onReorder={group.isUpNext ? onReorder : undefined}
                   onRecommend={onRecommend}
+                  onAddToQueue={onAddToQueue}
                   onDelete={onDelete}
                 />
               ))}

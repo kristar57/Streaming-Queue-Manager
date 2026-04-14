@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useWatchlist } from '../hooks/useWatchlist'
 import { useSubscriptions } from '../hooks/useSubscriptions'
+import { useSharedQueues, useQueueDetail } from '../hooks/useSharedQueues'
 import { TitleSearch } from '../components/title/TitleSearch'
 import { AddEntryForm } from '../components/title/AddEntryForm'
 import { EditEntryForm } from '../components/title/EditEntryForm'
@@ -9,6 +10,10 @@ import { ListView } from '../components/watchlist/ListView'
 import { CardView } from '../components/watchlist/CardView'
 import { FilterBar } from '../components/watchlist/FilterBar'
 import { RecommendationsPanel, SendRecModal } from '../components/watchlist/RecommendationsPanel'
+import { QueueSwitcher } from '../components/queue/QueueSwitcher'
+import { CreateQueueModal } from '../components/queue/CreateQueueModal'
+import { SharedQueueView } from '../components/queue/SharedQueueView'
+import { AddToQueueModal } from '../components/queue/AddToQueueModal'
 import { Button } from '../components/ui/Button'
 import { supabase } from '../lib/supabase'
 import type {
@@ -62,19 +67,16 @@ function applySorting(
   })
 }
 
-// Sort Up Next by queue_position (nulls last), caught-up entries always last
 function sortUpNext(entries: WatchlistEntryWithTitle[]): WatchlistEntryWithTitle[] {
   const active   = entries.filter((e) => !e.is_caught_up)
   const caughtUp = entries.filter((e) => e.is_caught_up)
-
-  const byPosition = (a: WatchlistEntryWithTitle, b: WatchlistEntryWithTitle) => {
+  const byPos = (a: WatchlistEntryWithTitle, b: WatchlistEntryWithTitle) => {
     if (a.queue_position === null && b.queue_position === null) return 0
     if (a.queue_position === null) return 1
     if (b.queue_position === null) return -1
     return a.queue_position - b.queue_position
   }
-
-  return [...active.sort(byPosition), ...caughtUp.sort(byPosition)]
+  return [...active.sort(byPos), ...caughtUp.sort(byPos)]
 }
 
 // ---------------------------------------------------------------
@@ -84,17 +86,35 @@ export default function Home() {
   const { user, profile, signOut } = useAuth()
   const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry } = useWatchlist()
   const { subscribedIds } = useSubscriptions(user?.id)
+  const { queues } = useSharedQueues(user?.id)
+
+  // Active queue: null = personal list, string = shared queue id
+  const [activeQueueId, setActiveQueueId] = useState<string | null>(null)
+
+  const { titles: queueTitles, loading: queueLoading, addTitle, removeTitle, reorderTitle } = useQueueDetail(activeQueueId, entries)
 
   const [pendingResult, setPendingResult] = useState<TMDBSearchResult | null>(null)
   const [pendingGenres, setPendingGenres] = useState<string[]>([])
   const [editingEntry, setEditingEntry] = useState<WatchlistEntryWithTitle | null>(null)
   const [recommendEntry, setRecommendEntry] = useState<WatchlistEntryWithTitle | null>(null)
+  const [addToQueueEntry, setAddToQueueEntry] = useState<WatchlistEntryWithTitle | null>(null)
+  const [showCreateQueue, setShowCreateQueue] = useState(false)
   const [view, setView] = useState<'list' | 'card'>('list')
   const [showFilters, setShowFilters] = useState(false)
   const [showRecs, setShowRecs] = useState(false)
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER_STATE)
+  const [recCount, setRecCount] = useState(0)
 
-  // Derive viewer list from all entries' profiles
+  useMemo(() => {
+    if (!user) return
+    supabase
+      .from('recommendations')
+      .select('id', { count: 'exact', head: true })
+      .eq('to_user_id', user.id)
+      .eq('status', 'pending')
+      .then(({ count }) => setRecCount(count ?? 0))
+  }, [user])
+
   const availableViewers = useMemo(() => {
     const map = new Map<string, string>()
     for (const e of entries) {
@@ -114,7 +134,6 @@ export default function Home() {
     [entries, filter]
   )
 
-  // Build groups: Up Next sorted by queue_position (caught-up entries sink to bottom)
   const groups = useMemo(() => [
     {
       label: 'Currently watching',
@@ -140,6 +159,11 @@ export default function Home() {
   async function handleAddEntry(fields: EntryFormFields) {
     if (!pendingResult || !user) return
     await addEntry(pendingResult, pendingGenres, fields, user.id)
+    // If we're in a shared queue, also add the new title to it
+    if (activeQueueId) {
+      // The entry will be created by addEntry; we need the title_id
+      // We'll handle this via the AddToQueueModal flow instead
+    }
     setPendingResult(null)
     setPendingGenres([])
   }
@@ -164,17 +188,7 @@ export default function Home() {
     setEditingEntry(null)
   }
 
-  // Pending recommendations count (badge)
-  const [recCount, setRecCount] = useState(0)
-  useMemo(() => {
-    if (!user) return
-    supabase
-      .from('recommendations')
-      .select('id', { count: 'exact', head: true })
-      .eq('to_user_id', user.id)
-      .eq('status', 'pending')
-      .then(({ count }) => setRecCount(count ?? 0))
-  }, [user])
+  const activeQueue = queues.find((q) => q.id === activeQueueId) ?? null
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-white">
@@ -205,26 +219,54 @@ export default function Home() {
           </button>
 
           {/* View toggle */}
-          <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/10">
+          <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/10 flex-shrink-0">
             <button
               onClick={() => setView('list')}
               className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${view === 'list' ? 'bg-white/15 text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
             >
-              ☰ List
+              ☰
             </button>
             <button
               onClick={() => setView('card')}
               className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${view === 'card' ? 'bg-white/15 text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
             >
-              ⊞ Cards
+              ⊞
             </button>
           </div>
 
-          <Button variant="ghost" size="sm" onClick={signOut}>Sign out</Button>
+          <button
+            onClick={signOut}
+            className="flex-shrink-0 text-[var(--text-secondary)] hover:text-white text-xs transition-colors cursor-pointer px-1"
+            title="Sign out"
+          >
+            <span className="hidden sm:inline">Sign out</span>
+            <span className="sm:hidden">↪</span>
+          </button>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-5">
+      <main className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3 sm:space-y-4">
+        {/* Queue switcher */}
+        <QueueSwitcher
+          queues={queues}
+          activeQueueId={activeQueueId}
+          onChange={(id) => { setActiveQueueId(id); setShowFilters(false) }}
+          onCreateNew={() => setShowCreateQueue(true)}
+        />
+
+        {/* Shared queue header */}
+        {activeQueue && (
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-white">{activeQueue.name}</h2>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                {queueTitles.length} title{queueTitles.length !== 1 ? 's' : ''} ·{' '}
+                shared queue
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Recommendations panel */}
         {showRecs && user && (
           <RecommendationsPanel
@@ -233,74 +275,96 @@ export default function Home() {
           />
         )}
 
-        {/* Search bar */}
-        <div className="flex gap-2 items-center">
-          <div className="flex-1">
-            <TitleSearch
-              onSelect={(result, genres) => {
-                setPendingResult(result)
-                setPendingGenres(genres)
-              }}
-            />
-          </div>
-          <Button
-            variant={showFilters || hasActiveFilter ? 'primary' : 'secondary'}
-            size="md"
-            onClick={() => setShowFilters((v) => !v)}
-          >
-            {hasActiveFilter ? '● ' : ''}Filters
-          </Button>
-        </div>
+        {/* Search + filters (personal list only) */}
+        {activeQueueId === null && (
+          <>
+            <div className="flex gap-2 items-center">
+              <div className="flex-1">
+                <TitleSearch
+                  onSelect={(result, genres) => {
+                    setPendingResult(result)
+                    setPendingGenres(genres)
+                  }}
+                />
+              </div>
+              <Button
+                variant={showFilters || hasActiveFilter ? 'primary' : 'secondary'}
+                size="md"
+                onClick={() => setShowFilters((v) => !v)}
+              >
+                {hasActiveFilter ? '●' : ''} Filters
+              </Button>
+            </div>
 
-        {/* Filter bar */}
-        {showFilters && (
-          <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl px-4 pt-4">
-            <FilterBar
-              filter={filter}
-              availableGenres={availableGenres}
-              availableViewers={availableViewers}
-              onChange={setFilter}
-            />
-          </div>
+            {showFilters && (
+              <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl px-4 pt-4">
+                <FilterBar
+                  filter={filter}
+                  availableGenres={availableGenres}
+                  availableViewers={availableViewers}
+                  onChange={setFilter}
+                />
+              </div>
+            )}
+          </>
         )}
 
-        {/* Watchlist */}
-        {loading ? (
-          <div className="text-center py-16 text-[var(--text-secondary)]">Loading…</div>
-        ) : error ? (
-          <div className="text-center py-16 text-red-400">{error}</div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-[var(--text-secondary)]">
-            {entries.length === 0
-              ? 'Your watchlist is empty. Search for a movie or show above to add one.'
-              : 'No entries match the current filters.'}
-          </div>
-        ) : view === 'list' ? (
-          <ListView
-            groups={groups}
-            availability={availability}
-            subscribedIds={subscribedIds}
-            onStatusChange={setStatus}
-            onPriorityCycle={cyclePriority}
-            onCaughtUpToggle={toggleCaughtUp}
-            onEdit={setEditingEntry}
-            onReorder={reorderEntry}
-            onRecommend={setRecommendEntry}
-            onDelete={deleteEntry}
-          />
+        {/* Main content */}
+        {activeQueueId !== null ? (
+          // Shared queue view
+          queueLoading ? (
+            <div className="text-center py-16 text-[var(--text-secondary)]">Loading…</div>
+          ) : (
+            <SharedQueueView
+              titles={queueTitles}
+              availability={availability}
+              currentUserId={user?.id ?? ''}
+              onReorder={reorderTitle}
+              onRemove={removeTitle}
+              onMyStatusChange={setStatus}
+            />
+          )
         ) : (
-          <CardView
-            groups={groups}
-            availability={availability}
-            subscribedIds={subscribedIds}
-            onStatusChange={setStatus}
-            onPriorityCycle={cyclePriority}
-            onCaughtUpToggle={toggleCaughtUp}
-            onEdit={setEditingEntry}
-            onReorder={reorderEntry}
-            onRecommend={setRecommendEntry}
-            onDelete={deleteEntry}
-          />
+          // Personal list view
+          loading ? (
+            <div className="text-center py-16 text-[var(--text-secondary)]">Loading…</div>
+          ) : error ? (
+            <div className="text-center py-16 text-red-400">{error}</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16 text-[var(--text-secondary)]">
+              {entries.length === 0
+                ? 'Your watchlist is empty. Search for a movie or show above to add one.'
+                : 'No entries match the current filters.'}
+            </div>
+          ) : view === 'list' ? (
+            <ListView
+              groups={groups}
+              availability={availability}
+              subscribedIds={subscribedIds}
+              onStatusChange={setStatus}
+              onPriorityCycle={cyclePriority}
+              onCaughtUpToggle={toggleCaughtUp}
+              onEdit={setEditingEntry}
+              onReorder={reorderEntry}
+              onRecommend={setRecommendEntry}
+              onAddToQueue={queues.length > 0 ? setAddToQueueEntry : undefined}
+              onDelete={deleteEntry}
+            />
+          ) : (
+            <CardView
+              groups={groups}
+              availability={availability}
+              subscribedIds={subscribedIds}
+              onStatusChange={setStatus}
+              onPriorityCycle={cyclePriority}
+              onCaughtUpToggle={toggleCaughtUp}
+              onEdit={setEditingEntry}
+              onReorder={reorderEntry}
+              onRecommend={setRecommendEntry}
+              onAddToQueue={queues.length > 0 ? setAddToQueueEntry : undefined}
+              onDelete={deleteEntry}
+            />
+          )
         )}
       </main>
 
@@ -329,6 +393,25 @@ export default function Home() {
           entry={recommendEntry}
           currentUserId={user.id}
           onClose={() => setRecommendEntry(null)}
+        />
+      )}
+
+      {/* Add to queue modal */}
+      {addToQueueEntry && user && (
+        <AddToQueueModal
+          entry={addToQueueEntry}
+          queues={queues}
+          onAdd={(queueId) => addTitle(queueId, user.id)}
+          onClose={() => setAddToQueueEntry(null)}
+        />
+      )}
+
+      {/* Create queue modal */}
+      {showCreateQueue && user && (
+        <CreateQueueModal
+          currentUserId={user.id}
+          onCreated={(id) => { setShowCreateQueue(false); setActiveQueueId(id) }}
+          onCancel={() => setShowCreateQueue(false)}
         />
       )}
     </div>

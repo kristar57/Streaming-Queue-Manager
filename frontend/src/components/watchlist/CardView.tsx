@@ -11,10 +11,11 @@ interface CardViewProps {
   onEdit: (entry: WatchlistEntryWithTitle) => void
   onReorder: (id: string, dir: 'up' | 'down') => void
   onRecommend: (entry: WatchlistEntryWithTitle) => void
+  onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
 }
 
-export function CardView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onDelete }: CardViewProps) {
+export function CardView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onAddToQueue, onDelete }: CardViewProps) {
   return (
     <div className="space-y-8">
       {groups.map((group) =>
@@ -41,6 +42,7 @@ export function CardView({ groups, availability, subscribedIds, onStatusChange, 
                   onEdit={onEdit}
                   onReorder={group.isUpNext ? onReorder : undefined}
                   onRecommend={onRecommend}
+                  onAddToQueue={onAddToQueue}
                   onDelete={onDelete}
                 />
               ))}

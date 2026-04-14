@@ -24,6 +24,7 @@ interface EntryCardProps {
   onEdit: (entry: WatchlistEntryWithTitle) => void
   onReorder?: (id: string, dir: 'up' | 'down') => void
   onRecommend: (entry: WatchlistEntryWithTitle) => void
+  onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
 }
 
@@ -39,6 +40,7 @@ export function EntryCard({
   onEdit,
   onReorder,
   onRecommend,
+  onAddToQueue,
   onDelete,
 }: EntryCardProps) {
   const { title } = entry
@@ -260,9 +262,12 @@ export function EntryCard({
               {nextStatus[entry.status]!.label}
             </Button>
           )}
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-wrap">
             <Button size="sm" variant="ghost" className="flex-1 justify-center" onClick={() => onEdit(entry)} title="Edit">✏ Edit</Button>
             <Button size="sm" variant="ghost" className="flex-1 justify-center" onClick={() => onRecommend(entry)} title="Recommend">↗ Rec</Button>
+            {onAddToQueue && (
+              <Button size="sm" variant="ghost" className="flex-1 justify-center" onClick={() => onAddToQueue(entry)} title="Add to shared queue">＋ Queue</Button>
+            )}
           </div>
           {confirmDelete ? (
             <div className="flex gap-1">
