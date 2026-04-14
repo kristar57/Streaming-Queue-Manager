@@ -150,4 +150,38 @@ export interface WatchlistEntryWithTitle extends WatchlistEntry {
   title: Title
 }
 
+// Form fields when adding or editing a watchlist entry
+export interface EntryFormFields {
+  status: EntryStatus
+  priority: EntryPriority
+  notes: string
+  custom_tags: string[]
+  current_season: number | null
+  current_episode: number | null
+}
+
+// Filter bar state
+export type SortField = 'created_at' | 'updated_at' | 'title' | 'tmdb_rating' | 'priority'
+export type SortDir = 'asc' | 'desc'
+
+export interface FilterState {
+  search: string
+  statuses: EntryStatus[]
+  types: TitleType[]
+  genres: string[]
+  priorities: EntryPriority[]
+  sortField: SortField
+  sortDir: SortDir
+}
+
+export const DEFAULT_FILTER_STATE: FilterState = {
+  search: '',
+  statuses: [],
+  types: [],
+  genres: [],
+  priorities: [],
+  sortField: 'updated_at',
+  sortDir: 'desc',
+}
+
 export const CURRENT_POLICY_VERSION = '1.0'
