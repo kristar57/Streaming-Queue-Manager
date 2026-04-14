@@ -149,6 +149,11 @@ export default function Home() {
       isUpNext: true,
     },
     {
+      label: 'Anticipated',
+      entries: filtered.filter((e) => e.status === 'anticipated'),
+      isUpNext: false,
+    },
+    {
       label: 'Watched',
       entries: filtered.filter((e) => e.status === 'watched'),
       isUpNext: false,

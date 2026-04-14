@@ -7,13 +7,29 @@ import { supabase } from '../lib/supabase'
 // Helpers
 // ---------------------------------------------------------------
 function generateCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no 0/O/1/I confusion
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   const seg = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
   return `${seg()}-${seg()}`
 }
 
 function copyText(text: string) {
   navigator.clipboard.writeText(text).catch(() => {})
+}
+
+function buildEmailBody(code: string, appUrl: string, inviterName?: string): string {
+  const signoff = inviterName ? `— ${inviterName}` : '— The QueShare team'
+  return `Hi,
+
+${inviterName ? `${inviterName} has invited you to join` : "You've been invited to join"} QueShare — a private app for tracking and sharing what you want to watch together.
+
+Your invite code is: ${code}
+
+Use the link below to create your account:
+${appUrl}/register?code=${code}
+
+This code can only be used once${inviterName ? ' and was sent personally to you' : ''}.
+
+${signoff}`
 }
 
 // ---------------------------------------------------------------
@@ -34,6 +50,15 @@ interface UserProfile {
   is_admin: boolean
   created_at: string
 }
+
+interface EmailDraft {
+  toEmail: string
+  code: string
+  subject: string
+  body: string
+}
+
+type InviteStep = 'form' | 'preview' | 'sent'
 
 // ---------------------------------------------------------------
 // Sub-components
@@ -56,10 +81,22 @@ export default function Admin() {
   const [codes, setCodes] = useState<InviteCode[]>([])
   const [users, setUsers] = useState<UserProfile[]>([])
   const [loadingCodes, setLoadingCodes] = useState(true)
-  const [generatingCode, setGeneratingCode] = useState(false)
-  const [expiryDays, setExpiryDays] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+
+  // Invite send flow
+  const [inviteStep, setInviteStep] = useState<InviteStep>('form')
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteFromName, setInviteFromName] = useState(profile?.display_name ?? '')
+  const [generating, setGenerating] = useState(false)
+  const [draft, setDraft] = useState<EmailDraft | null>(null)
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
+
+  // Code-only (no email) flow
+  const [showCodeOnly, setShowCodeOnly] = useState(false)
+  const [codeOnlyExpiry, setCodeOnlyExpiry] = useState('')
+  const [generatingOnly, setGeneratingOnly] = useState(false)
+  const [codesError, setCodesError] = useState('')
 
   const appUrl = window.location.origin
 
@@ -71,7 +108,6 @@ export default function Admin() {
       .order('created_at', { ascending: false })
     if (!data) return
 
-    // Fetch display names for used codes
     const usedIds = data.filter((c) => c.used_by).map((c) => c.used_by as string)
     let nameMap: Record<string, string> = {}
     if (usedIds.length > 0) {
@@ -103,27 +139,70 @@ export default function Admin() {
   if (!profileReady) return null
   if (!user || !profile?.is_admin) return <Navigate to="/" replace />
 
-  // ── Actions ──────────────────────────────────────────────────
-  async function handleGenerate() {
-    setGeneratingCode(true)
-    setErr(null)
-    const code = generateCode()
-    const expiresAt = expiryDays
-      ? new Date(Date.now() + parseInt(expiryDays) * 86400000).toISOString()
-      : null
-
-    const { error } = await supabase.from('invite_codes').insert({
-      code,
-      created_by: user!.id,
-      expires_at: expiresAt,
-    })
-
-    if (error) {
-      setErr(error.message)
-    } else {
+  // ── Invite with email ────────────────────────────────────────
+  async function handleGenerateAndPreview() {
+    if (!inviteEmail.trim()) return
+    setGenerating(true); setCodesError('')
+    try {
+      const code = generateCode()
+      const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString() // 7 days default
+      await supabase.from('invite_codes').insert({ code, created_by: user!.id, expires_at: expiresAt })
       await loadCodes()
+      const subject = `You're invited to QueShare`
+      const body = buildEmailBody(code, appUrl, inviteFromName.trim() || profile?.display_name)
+      setDraft({ toEmail: inviteEmail.trim(), code, subject, body })
+      setInviteStep('preview')
+    } catch (err) {
+      setCodesError((err as { message?: string })?.message ?? 'Failed to generate code')
+    } finally {
+      setGenerating(false)
     }
-    setGeneratingCode(false)
+  }
+
+  async function handleSendEmail() {
+    if (!draft) return
+    setSending(true); setSendError('')
+    try {
+      const { data, error } = await supabase.functions.invoke('send-invite', {
+        body: {
+          to_email: draft.toEmail,
+          code: draft.code,
+          subject: draft.subject,
+          body: draft.body,
+        },
+      })
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
+      setInviteStep('sent')
+    } catch (err) {
+      setSendError((err as { message?: string })?.message ?? 'Failed to send email')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  function resetInviteFlow() {
+    setInviteStep('form')
+    setInviteEmail('')
+    setDraft(null)
+    setSendError('')
+  }
+
+  // ── Code only ────────────────────────────────────────────────
+  async function handleGenerateOnly() {
+    setGeneratingOnly(true); setCodesError('')
+    try {
+      const code = generateCode()
+      const expiresAt = codeOnlyExpiry
+        ? new Date(Date.now() + parseInt(codeOnlyExpiry) * 86400000).toISOString()
+        : null
+      await supabase.from('invite_codes').insert({ code, created_by: user!.id, expires_at: expiresAt })
+      await loadCodes()
+    } catch (err) {
+      setCodesError((err as { message?: string })?.message ?? 'Failed to generate code')
+    } finally {
+      setGeneratingOnly(false)
+    }
   }
 
   async function handleRevoke(id: string) {
@@ -136,14 +215,14 @@ export default function Admin() {
     await loadUsers()
   }
 
-  function handleCopy(id: string, text: string) {
+  function handleCopy(key: string, text: string) {
     copyText(text)
-    setCopiedId(id)
+    setCopiedId(key)
     setTimeout(() => setCopiedId(null), 2000)
   }
 
   const unusedCodes = codes.filter((c) => !c.used_by)
-  const usedCodes   = codes.filter((c) => c.used_by)
+  const usedCodes   = codes.filter((c) =>  c.used_by)
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-white">
@@ -163,52 +242,161 @@ export default function Admin() {
 
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-8">
 
-        {/* ── Generate invite code ── */}
+        {/* ── Invite codes ── */}
         <Section title="Invite codes">
-          <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl p-4 space-y-4">
-            <div className="flex flex-wrap gap-3 items-end">
-              <div>
-                <label className="block text-xs text-[var(--text-secondary)] mb-1.5">Expires after (days)</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={expiryDays}
-                  onChange={(e) => setExpiryDays(e.target.value)}
-                  placeholder="Never"
-                  className="w-32 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
-                />
-              </div>
-              <button
-                onClick={handleGenerate}
-                disabled={generatingCode}
-                className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer"
-              >
-                {generatingCode ? 'Generating…' : 'Generate code'}
-              </button>
-            </div>
-            {err && <p className="text-sm text-red-400">{err}</p>}
+          <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl p-4 space-y-5">
 
-            {/* Unused codes */}
+            {/* ── Step: form ── */}
+            {inviteStep === 'form' && (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">Send an invite</p>
+
+                <div className="space-y-2">
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleGenerateAndPreview() }}
+                    placeholder="Invitee email address"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={inviteFromName}
+                      onChange={(e) => setInviteFromName(e.target.value)}
+                      placeholder="Sent from (your name in the email)"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
+                    />
+                    <button
+                      onClick={handleGenerateAndPreview}
+                      disabled={generating || !inviteEmail.trim()}
+                      className="px-4 py-2 bg-[var(--accent)] hover:opacity-90 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-opacity cursor-pointer flex items-center gap-1.5"
+                    >
+                      {generating ? '…' : '✉ Preview'}
+                    </button>
+                  </div>
+                </div>
+
+                {codesError && <p className="text-sm text-red-400">{codesError}</p>}
+
+                {/* Code-only toggle */}
+                <button
+                  onClick={() => setShowCodeOnly((v) => !v)}
+                  className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
+                >
+                  {showCodeOnly ? '− Hide' : '+ Generate code without email'}
+                </button>
+
+                {showCodeOnly && (
+                  <div className="flex gap-2 pt-2 border-t border-white/10">
+                    <input
+                      type="number"
+                      min={1}
+                      value={codeOnlyExpiry}
+                      onChange={(e) => setCodeOnlyExpiry(e.target.value)}
+                      placeholder="Expiry in days (optional)"
+                      className="w-44 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
+                    />
+                    <button
+                      onClick={handleGenerateOnly}
+                      disabled={generatingOnly}
+                      className="px-4 py-2 bg-white/10 hover:bg-white/15 disabled:opacity-50 text-white font-medium rounded-lg text-sm transition-colors cursor-pointer"
+                    >
+                      {generatingOnly ? 'Generating…' : 'Generate code'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Step: preview ── */}
+            {inviteStep === 'preview' && draft && (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">Preview — looks good?</p>
+
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-xs text-[var(--text-secondary)] block mb-1">To</label>
+                    <input
+                      type="text" value={draft.toEmail} readOnly
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-[var(--text-secondary)] cursor-default"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-[var(--text-secondary)] block mb-1">Subject</label>
+                    <input
+                      type="text"
+                      value={draft.subject}
+                      onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-[var(--text-secondary)] block mb-1">Body</label>
+                    <textarea
+                      rows={10}
+                      value={draft.body}
+                      onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-[var(--accent)] resize-none"
+                    />
+                  </div>
+                </div>
+
+                {sendError && <p className="text-sm text-red-400">{sendError}</p>}
+
+                <div className="flex gap-2 justify-end">
+                  <button onClick={resetInviteFlow} className="px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSendEmail}
+                    disabled={sending}
+                    className="px-4 py-2 bg-[var(--accent)] hover:opacity-90 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-opacity cursor-pointer flex items-center gap-1.5"
+                  >
+                    {sending ? '…' : '↗ Send invite'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Step: sent ── */}
+            {inviteStep === 'sent' && draft && (
+              <div className="space-y-3">
+                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 space-y-2">
+                  <p className="text-sm font-semibold text-green-400">✓ Invite sent to {draft.toEmail}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    Code <span className="font-mono text-white tracking-widest">{draft.code}</span> has been generated and the email is on its way.
+                  </p>
+                </div>
+                <button
+                  onClick={resetInviteFlow}
+                  className="text-sm text-[var(--accent)] hover:opacity-80 transition-opacity cursor-pointer"
+                >
+                  + Send another invite
+                </button>
+              </div>
+            )}
+
+            {/* ── Active codes ── */}
             {!loadingCodes && unusedCodes.length > 0 && (
               <div>
-                <p className="text-xs text-[var(--text-secondary)] mb-2">Active — share these</p>
+                <p className="text-xs text-[var(--text-secondary)] mb-2">Active codes</p>
                 <div className="space-y-2">
                   {unusedCodes.map((c) => {
                     const link = `${appUrl}/register?code=${c.code}`
                     const expired = c.expires_at && new Date(c.expires_at) < new Date()
                     return (
-                      <div key={c.id} className={`flex items-center gap-3 p-3 rounded-lg border ${expired ? 'border-red-500/20 bg-red-500/5' : 'border-white/10 bg-white/5'}`}>
-                        <span className="font-mono text-sm font-semibold text-white tracking-widest flex-shrink-0">
-                          {c.code}
-                        </span>
+                      <div key={c.id} className={`flex items-center gap-3 p-3 rounded-lg border flex-wrap ${expired ? 'border-red-500/20 bg-red-500/5' : 'border-white/10 bg-white/5'}`}>
+                        <span className="font-mono text-sm font-semibold text-white tracking-widest">{c.code}</span>
                         {c.expires_at && (
-                          <span className={`text-xs flex-shrink-0 ${expired ? 'text-red-400' : 'text-[var(--text-secondary)]'}`}>
+                          <span className={`text-xs ${expired ? 'text-red-400' : 'text-[var(--text-secondary)]'}`}>
                             {expired ? 'Expired' : `Expires ${new Date(c.expires_at).toLocaleDateString()}`}
                           </span>
                         )}
                         <div className="flex-1" />
                         <button
-                          onClick={() => handleCopy(c.id, c.code)}
+                          onClick={() => handleCopy(c.id + 'code', c.code)}
                           className="text-xs text-[var(--text-secondary)] hover:text-white border border-white/10 rounded px-2 py-1 transition-colors cursor-pointer"
                         >
                           {copiedId === c.id + 'code' ? '✓ Copied' : 'Copy code'}
@@ -219,22 +407,12 @@ export default function Admin() {
                         >
                           {copiedId === c.id + 'link' ? '✓ Copied' : 'Copy link'}
                         </button>
-                        {!expired && (
-                          <button
-                            onClick={() => handleRevoke(c.id)}
-                            className="text-xs text-red-400 hover:text-red-300 transition-colors cursor-pointer"
-                          >
-                            Revoke
-                          </button>
-                        )}
-                        {expired && (
-                          <button
-                            onClick={() => handleRevoke(c.id)}
-                            className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-                          >
-                            Remove
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleRevoke(c.id)}
+                          className="text-xs text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                        >
+                          Revoke
+                        </button>
                       </div>
                     )
                   })}
@@ -242,7 +420,7 @@ export default function Admin() {
               </div>
             )}
 
-            {/* Used codes */}
+            {/* ── Used codes ── */}
             {usedCodes.length > 0 && (
               <div>
                 <p className="text-xs text-[var(--text-secondary)] mb-2">Used</p>
@@ -254,9 +432,7 @@ export default function Admin() {
                         Used by <span className="text-white">{c.used_by_name ?? 'unknown'}</span>
                       </span>
                       <div className="flex-1" />
-                      <span className="text-xs text-[var(--text-secondary)]">
-                        {new Date(c.created_at).toLocaleDateString()}
-                      </span>
+                      <span className="text-xs text-[var(--text-secondary)]">{new Date(c.created_at).toLocaleDateString()}</span>
                     </div>
                   ))}
                 </div>
@@ -264,9 +440,7 @@ export default function Admin() {
             )}
 
             {!loadingCodes && codes.length === 0 && (
-              <p className="text-sm text-[var(--text-secondary)] text-center py-2">
-                No invite codes yet. Generate one above.
-              </p>
+              <p className="text-sm text-[var(--text-secondary)] text-center py-2">No invite codes yet.</p>
             )}
           </div>
         </Section>

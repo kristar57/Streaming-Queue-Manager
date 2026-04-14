@@ -47,8 +47,9 @@ export function EntryRow({
   const [expanded, setExpanded] = useState(false)
 
   const nextStatus: Partial<Record<EntryStatus, { label: string; status: EntryStatus }>> = {
-    want_to_watch: { label: 'Start watching', status: 'watching' },
-    watching:      { label: 'Mark watched',   status: 'watched' },
+    anticipated:   { label: 'Move to Up Next', status: 'want_to_watch' },
+    want_to_watch: { label: 'Start watching',  status: 'watching' },
+    watching:      { label: 'Mark watched',    status: 'watched' },
   }
 
   const statusChip = getTitleStatusChip(title)

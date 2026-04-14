@@ -32,9 +32,10 @@ export function StatusBadge({ status, isCaughtUp }: { status: EntryStatus; isCau
     return <Badge color="blue">Caught up</Badge>
   }
   const map: Record<EntryStatus, { label: string; color: Color }> = {
-    want_to_watch: { label: 'Up next',  color: 'gray' },
-    watching:      { label: 'Watching', color: 'indigo' },
-    watched:       { label: 'Watched',  color: 'green' },
+    want_to_watch: { label: 'Up next',     color: 'gray' },
+    watching:      { label: 'Watching',    color: 'indigo' },
+    watched:       { label: 'Watched',     color: 'green' },
+    anticipated:   { label: 'Anticipated', color: 'yellow' },
   }
   const { label, color } = map[status]
   return <Badge color={color}>{label}</Badge>
