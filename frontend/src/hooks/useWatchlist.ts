@@ -17,7 +17,7 @@ import type {
 // After the basic upsert, fetches full details + credits from TMDB
 // and stores them in the same row.
 // ---------------------------------------------------------------
-async function upsertTitle(result: TMDBSearchResult, genres: string[]): Promise<string> {
+export async function upsertTitle(result: TMDBSearchResult, genres: string[]): Promise<string> {
   const isMovie = result.media_type === 'movie'
   const tmdbType = isMovie ? 'movie' : 'tv'
 

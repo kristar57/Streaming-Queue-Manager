@@ -17,6 +17,7 @@ import { AddToQueueModal } from '../components/queue/AddToQueueModal'
 import { QueueSettingsModal } from '../components/queue/QueueSettingsModal'
 import { Button } from '../components/ui/Button'
 import { supabase } from '../lib/supabase'
+import { upsertTitle } from '../hooks/useWatchlist'
 import { Link } from 'react-router-dom'
 import type {
   TMDBSearchResult,
@@ -93,7 +94,10 @@ export default function Home() {
   // Active queue: null = personal list, string = shared queue id
   const [activeQueueId, setActiveQueueId] = useState<string | null>(null)
 
-  const { titles: queueTitles, loading: queueLoading, removeTitle, reorderTitle } = useQueueDetail(activeQueueId)
+  const { titles: queueTitles, loading: queueLoading, approveTitle, rejectTitle, removeTitle, reorderTitle } = useQueueDetail(activeQueueId)
+
+  const [queueSearchBusy, setQueueSearchBusy] = useState(false)
+  const [addAsProposal, setAddAsProposal] = useState(false)
 
   const [pendingResult, setPendingResult] = useState<TMDBSearchResult | null>(null)
   const [pendingGenres, setPendingGenres] = useState<string[]>([])
@@ -272,21 +276,56 @@ export default function Home() {
           onCreateNew={() => setShowCreateQueue(true)}
         />
 
-        {/* Shared queue header */}
+        {/* Shared queue header + search */}
         {activeQueue && (
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold text-white">{activeQueue.name}</h2>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                {queueTitles.length} title{queueTitles.length !== 1 ? 's' : ''} · shared queue
-              </p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold text-white">{activeQueue.name}</h2>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  {queueTitles.length} title{queueTitles.length !== 1 ? 's' : ''} · shared queue
+                </p>
+              </div>
+              <button
+                onClick={() => setShowQueueSettings(true)}
+                className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors border border-white/10 rounded-lg px-3 py-1.5 cursor-pointer"
+              >
+                ⚙ Members
+              </button>
             </div>
-            <button
-              onClick={() => setShowQueueSettings(true)}
-              className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors border border-white/10 rounded-lg px-3 py-1.5 cursor-pointer"
-            >
-              ⚙ Members
-            </button>
+
+            {/* Direct search — add or propose a title in this shared queue */}
+            <TitleSearch
+              placeholder="Search to add a title to this queue…"
+              onSelect={async (result, genres) => {
+                if (!user || queueSearchBusy) return
+                setQueueSearchBusy(true)
+                try {
+                  const titleId = await upsertTitle(result, genres)
+                  const { error } = await supabase.from('queue_titles').insert({
+                    queue_id: activeQueueId,
+                    title_id: titleId,
+                    added_by: user.id,
+                    status: addAsProposal ? 'proposed' : 'active',
+                  })
+                  if (error && error.code !== '23505') throw error
+                } finally {
+                  setQueueSearchBusy(false)
+                }
+              }}
+            />
+            <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)] cursor-pointer select-none px-1">
+              <input
+                type="checkbox"
+                checked={addAsProposal}
+                onChange={(e) => setAddAsProposal(e.target.checked)}
+                className="rounded border border-white/20 bg-white/5 accent-[var(--accent)] cursor-pointer"
+              />
+              Propose for approval (other members can approve or reject)
+            </label>
+            {queueSearchBusy && (
+              <p className="text-xs text-[var(--text-secondary)] px-1">Adding…</p>
+            )}
           </div>
         )}
 
@@ -343,6 +382,8 @@ export default function Home() {
               availability={availability}
               currentUserId={user?.id ?? ''}
               onReorder={reorderTitle}
+              onApprove={approveTitle}
+              onReject={rejectTitle}
               onRemove={removeTitle}
               onMyStatusChange={setStatus}
             />

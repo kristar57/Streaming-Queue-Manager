@@ -5,9 +5,10 @@ import type { TMDBSearchResult } from '../../types'
 
 interface TitleSearchProps {
   onSelect: (result: TMDBSearchResult, genres: string[]) => void
+  placeholder?: string
 }
 
-export function TitleSearch({ onSelect }: TitleSearchProps) {
+export function TitleSearch({ onSelect, placeholder = 'Search for a movie or show...' }: TitleSearchProps) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -40,7 +41,7 @@ export function TitleSearch({ onSelect }: TitleSearchProps) {
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
-          placeholder="Search for a movie or show..."
+          placeholder={placeholder}
           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors pr-10"
         />
         {loading && (

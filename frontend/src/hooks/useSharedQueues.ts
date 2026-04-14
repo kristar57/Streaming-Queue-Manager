@@ -168,6 +168,18 @@ export function useQueueDetail(queueId: string | null) {
     await fetchDetail()
   }, [queueId, fetchDetail])
 
+  // Approve a proposed title (changes status → active)
+  const approveTitle = useCallback(async (queueTitleId: string) => {
+    await supabase.from('queue_titles').update({ status: 'active' }).eq('id', queueTitleId)
+    await fetchDetail()
+  }, [fetchDetail])
+
+  // Reject a proposed title (moves to rejected bucket for discussion before final removal)
+  const rejectTitle = useCallback(async (queueTitleId: string) => {
+    await supabase.from('queue_titles').update({ status: 'rejected' }).eq('id', queueTitleId)
+    await fetchDetail()
+  }, [fetchDetail])
+
   // Remove a title from the shared queue (not from personal lists)
   const removeTitle = useCallback(async (queueTitleId: string) => {
     await supabase.from('queue_titles').delete().eq('id', queueTitleId)
@@ -194,5 +206,5 @@ export function useQueueDetail(queueId: string | null) {
     await fetchDetail()
   }, [titles, fetchDetail])
 
-  return { members, titles, loading, addTitle, removeTitle, reorderTitle, refresh: fetchDetail }
+  return { members, titles, loading, addTitle, approveTitle, rejectTitle, removeTitle, reorderTitle, refresh: fetchDetail }
 }
