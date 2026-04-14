@@ -197,8 +197,8 @@ function QueueRow({
       {expanded && (
         <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(16px+36px+10px+8px)]">
 
-          {/* Proposed — any non-proposer can approve, shelf, or reject; proposer can only withdraw */}
-          {isProposed && !isProposer && (
+          {/* Proposed — anyone can approve, shelf, reject, or withdraw */}
+          {isProposed && (
             <>
               <button
                 onClick={() => onApprove(qt.id)}
@@ -214,32 +214,26 @@ function QueueRow({
               </button>
               <button
                 onClick={() => onRemove(qt.id)}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 transition-colors cursor-pointer"
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                  isProposer
+                    ? 'bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white'
+                    : 'bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30'
+                }`}
               >
-                ✗ Reject
+                {isProposer ? 'Withdraw' : '✗ Reject'}
               </button>
             </>
           )}
-          {isProposed && isProposer && (
-            <button
-              onClick={() => onRemove(qt.id)}
-              className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-            >
-              Withdraw proposal
-            </button>
-          )}
 
-          {/* Shelved — non-proposer can add to queue; anyone can remove */}
+          {/* Shelved — anyone can add to queue or remove */}
           {isShelved && (
             <>
-              {!isProposer && (
-                <button
-                  onClick={() => onApprove(qt.id)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30 transition-colors cursor-pointer"
-                >
-                  ✓ Add to queue
-                </button>
-              )}
+              <button
+                onClick={() => onApprove(qt.id)}
+                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30 transition-colors cursor-pointer"
+              >
+                ✓ Add to queue
+              </button>
               {confirmRemove ? (
                 <>
                   <button

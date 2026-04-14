@@ -3,6 +3,51 @@ import { supabase } from '../lib/supabase'
 import type { SharedQueue, QueueMember, QueueTitleWithMemberEntries, WatchlistEntryWithTitle } from '../types'
 
 // ---------------------------------------------------------------
+// useTitleQueueMap — which of the user's titles appear in shared queues?
+// Returns a map: title_id → [{ queueId, queueName, status }]
+// Used to show "also in shared queue" badges on personal list entries.
+// ---------------------------------------------------------------
+export interface TitleQueueRef {
+  queueId: string
+  queueName: string
+  status: string   // 'active' | 'proposed' | 'shelved'
+}
+
+export function useTitleQueueMap(userId: string | undefined, queues: SharedQueue[]) {
+  const [map, setMap] = useState<Record<string, TitleQueueRef[]>>({})
+
+  const fetch = useCallback(async () => {
+    if (!userId || queues.length === 0) { setMap({}); return }
+
+    const queueIds = queues.map((q) => q.id)
+    const { data } = await supabase
+      .from('queue_titles')
+      .select('title_id, queue_id, status')
+      .in('queue_id', queueIds)
+      .in('status', ['active', 'proposed', 'shelved'])
+
+    if (!data) return
+
+    const result: Record<string, TitleQueueRef[]> = {}
+    const queueNameMap = Object.fromEntries(queues.map((q) => [q.id, q.name]))
+    for (const row of data) {
+      const tid = row.title_id as string
+      if (!result[tid]) result[tid] = []
+      result[tid].push({
+        queueId: row.queue_id as string,
+        queueName: queueNameMap[row.queue_id as string] ?? 'Shared queue',
+        status: row.status as string,
+      })
+    }
+    setMap(result)
+  }, [userId, queues])
+
+  useEffect(() => { fetch() }, [fetch])
+
+  return map
+}
+
+// ---------------------------------------------------------------
 // useSharedQueues — list all queues the user belongs to
 // ---------------------------------------------------------------
 export function useSharedQueues(userId: string | undefined) {

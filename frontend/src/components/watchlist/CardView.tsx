@@ -1,10 +1,12 @@
 import { EntryCard } from './EntryCard'
 import type { WatchlistEntryWithTitle, EntryStatus, StreamingAvailability } from '../../types'
+import type { TitleQueueRef } from '../../hooks/useSharedQueues'
 
 interface CardViewProps {
   groups: { label: string; entries: WatchlistEntryWithTitle[]; isUpNext?: boolean }[]
   availability: Record<string, StreamingAvailability[]>
   subscribedIds: Set<number>
+  titleQueueMap?: Record<string, TitleQueueRef[]>
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
   onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
@@ -16,7 +18,7 @@ interface CardViewProps {
   onViewDetail: (entry: WatchlistEntryWithTitle) => void
 }
 
-export function CardView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onAddToQueue, onDelete, onViewDetail }: CardViewProps) {
+export function CardView({ groups, availability, subscribedIds, titleQueueMap, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onAddToQueue, onDelete, onViewDetail }: CardViewProps) {
   return (
     <div className="space-y-8">
       {groups.map((group) =>
@@ -35,6 +37,7 @@ export function CardView({ groups, availability, subscribedIds, onStatusChange, 
                   entry={entry}
                   providers={availability[entry.title_id] ?? []}
                   subscribedIds={subscribedIds}
+                  sharedQueues={titleQueueMap?.[entry.title_id]}
                   canMoveUp={group.isUpNext && idx > 0}
                   canMoveDown={group.isUpNext && idx < group.entries.length - 1}
                   onStatusChange={onStatusChange}

@@ -4,6 +4,7 @@ import { StatusBadge, PriorityDot } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { getTitleStatusChip, formatRuntime, releaseYear } from '../../lib/titleUtils'
 import type { WatchlistEntryWithTitle, EntryStatus, StreamingAvailability } from '../../types'
+import type { TitleQueueRef } from '../../hooks/useSharedQueues'
 
 const CHIP_COLORS = {
   blue:   'bg-blue-500/20 text-blue-300',
@@ -16,6 +17,7 @@ interface EntryCardProps {
   entry: WatchlistEntryWithTitle
   providers: StreamingAvailability[]
   subscribedIds: Set<number>
+  sharedQueues?: TitleQueueRef[]
   canMoveUp?: boolean
   canMoveDown?: boolean
   onStatusChange: (id: string, status: EntryStatus) => void
@@ -33,6 +35,7 @@ export function EntryCard({
   entry,
   providers,
   subscribedIds,
+  sharedQueues,
   canMoveUp,
   canMoveDown,
   onStatusChange,
@@ -194,6 +197,26 @@ export function EntryCard({
                   {c.name.split(' ')[0]}
                 </span>
               </div>
+            ))}
+          </div>
+        )}
+
+        {/* Shared queue badges */}
+        {sharedQueues && sharedQueues.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-0.5">
+            {sharedQueues.map((q) => (
+              <span
+                key={q.queueId}
+                title={q.status === 'active' ? `In shared queue: ${q.queueName}` : q.status === 'proposed' ? `Proposed in: ${q.queueName}` : `On the shelf in: ${q.queueName}`}
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                  q.status === 'active'
+                    ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
+                    : 'bg-white/5 text-[var(--text-secondary)] border-white/10'
+                }`}
+              >
+                <span>👥</span>
+                <span>{q.queueName}{q.status !== 'active' ? ` (${q.status})` : ''}</span>
+              </span>
             ))}
           </div>
         )}

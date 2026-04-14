@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useWatchlist } from '../hooks/useWatchlist'
 import { useSubscriptions } from '../hooks/useSubscriptions'
-import { useSharedQueues, useQueueDetail } from '../hooks/useSharedQueues'
+import { useSharedQueues, useQueueDetail, useTitleQueueMap } from '../hooks/useSharedQueues'
 import { TitleSearch } from '../components/title/TitleSearch'
 import { AddEntryForm } from '../components/title/AddEntryForm'
 import { EditEntryForm } from '../components/title/EditEntryForm'
@@ -93,6 +93,7 @@ export default function Home() {
   const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry, syncAllAvailability } = useWatchlist(user?.id)
   const { subscriptions, subscribedIds, toggleSubscription } = useSubscriptions(user?.id)
   const { queues } = useSharedQueues(user?.id)
+  const titleQueueMap = useTitleQueueMap(user?.id, queues)
 
   // Active queue: null = personal list, string = shared queue id
   const [activeQueueId, setActiveQueueId] = useState<string | null>(null)
@@ -437,6 +438,7 @@ export default function Home() {
               groups={groups}
               availability={availability}
               subscribedIds={subscribedIds}
+              titleQueueMap={titleQueueMap}
               onStatusChange={setStatus}
               onPriorityCycle={cyclePriority}
               onCaughtUpToggle={toggleCaughtUp}
@@ -452,6 +454,7 @@ export default function Home() {
               groups={groups}
               availability={availability}
               subscribedIds={subscribedIds}
+              titleQueueMap={titleQueueMap}
               onStatusChange={setStatus}
               onPriorityCycle={cyclePriority}
               onCaughtUpToggle={toggleCaughtUp}
