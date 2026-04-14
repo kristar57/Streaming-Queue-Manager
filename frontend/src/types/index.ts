@@ -13,6 +13,7 @@ export interface Profile {
   display_name: string
   is_admin: boolean
   can_invite: boolean
+  can_delegate: boolean
   is_disabled: boolean
   invited_by: string | null
   consent_accepted_at: string | null
