@@ -231,15 +231,13 @@ export default function Home() {
           {/* Streaming services */}
           <button
             onClick={() => setShowServices(true)}
-            className={`relative px-2.5 py-1.5 rounded-lg text-sm hover:text-white hover:bg-white/5 transition-colors cursor-pointer ${subscribedIds.size > 0 ? 'text-green-400' : 'text-[var(--text-secondary)]'}`}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-[var(--text-secondary)] hover:text-white hover:bg-white/5 border border-white/10 transition-colors cursor-pointer flex-shrink-0"
             title="My streaming services"
           >
-            📺
-            {subscribedIds.size > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 text-white text-[9px] font-bold flex items-center justify-center">
-                {subscribedIds.size}
-              </span>
-            )}
+            <span>📺</span>
+            <span className="hidden sm:inline">
+              {subscribedIds.size > 0 ? `Services (${subscribedIds.size})` : 'Services'}
+            </span>
           </button>
 
           {/* Recommendations bell */}
