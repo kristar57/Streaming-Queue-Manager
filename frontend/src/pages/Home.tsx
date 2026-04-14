@@ -14,6 +14,7 @@ import { QueueSwitcher } from '../components/queue/QueueSwitcher'
 import { CreateQueueModal } from '../components/queue/CreateQueueModal'
 import { SharedQueueView } from '../components/queue/SharedQueueView'
 import { AddToQueueModal } from '../components/queue/AddToQueueModal'
+import { QueueSettingsModal } from '../components/queue/QueueSettingsModal'
 import { Button } from '../components/ui/Button'
 import { supabase } from '../lib/supabase'
 import type {
@@ -99,6 +100,7 @@ export default function Home() {
   const [recommendEntry, setRecommendEntry] = useState<WatchlistEntryWithTitle | null>(null)
   const [addToQueueEntry, setAddToQueueEntry] = useState<WatchlistEntryWithTitle | null>(null)
   const [showCreateQueue, setShowCreateQueue] = useState(false)
+  const [showQueueSettings, setShowQueueSettings] = useState(false)
   const [view, setView] = useState<'list' | 'card'>('list')
   const [showFilters, setShowFilters] = useState(false)
   const [showRecs, setShowRecs] = useState(false)
@@ -260,10 +262,15 @@ export default function Home() {
             <div>
               <h2 className="font-semibold text-white">{activeQueue.name}</h2>
               <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                {queueTitles.length} title{queueTitles.length !== 1 ? 's' : ''} ·{' '}
-                shared queue
+                {queueTitles.length} title{queueTitles.length !== 1 ? 's' : ''} · shared queue
               </p>
             </div>
+            <button
+              onClick={() => setShowQueueSettings(true)}
+              className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors border border-white/10 rounded-lg px-3 py-1.5 cursor-pointer"
+            >
+              ⚙ Members
+            </button>
           </div>
         )}
 
@@ -412,6 +419,16 @@ export default function Home() {
           currentUserId={user.id}
           onCreated={(id) => { setShowCreateQueue(false); setActiveQueueId(id) }}
           onCancel={() => setShowCreateQueue(false)}
+        />
+      )}
+
+      {/* Queue settings modal */}
+      {showQueueSettings && activeQueue && user && (
+        <QueueSettingsModal
+          queue={activeQueue}
+          currentUserId={user.id}
+          onClose={() => setShowQueueSettings(false)}
+          onDeleted={() => { setShowQueueSettings(false); setActiveQueueId(null) }}
         />
       )}
     </div>
