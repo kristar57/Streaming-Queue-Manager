@@ -4,13 +4,19 @@ import { getTitleStatusChip, formatRuntime, releaseYear } from '../../lib/titleU
 import { ShelfDecisionPanel } from './ShelfDecisionPanel'
 import type { QueueTitleWithMemberEntries, StreamingAvailability, Title } from '../../types'
 
-function isUpcomingTitle(title: Title): boolean {
+function isUpcomingByTmdb(title: Title): boolean {
   const today = new Date()
-  const releaseDate = title.release_date ? new Date(title.release_date) : null
-  if (releaseDate && releaseDate > today) return true
+  if (title.release_date && new Date(title.release_date) > today) return true
+  if (title.next_episode_air_date && new Date(title.next_episode_air_date) > today) return true
   const status = title.tmdb_status
   if (!status) return false
   return ['In Production', 'Post Production', 'Planned', 'Rumored'].includes(status)
+}
+
+function isUpcomingForQueue(qt: QueueTitleWithMemberEntries, currentUserId: string): boolean {
+  const myEntry = qt.member_entries.find((m) => m.user_id === currentUserId)?.entry
+  if (myEntry) return myEntry.status === 'upcoming'
+  return isUpcomingByTmdb(qt.title)
 }
 
 interface SharedQueueViewProps {
@@ -355,9 +361,9 @@ export function SharedQueueView({
   const proposed   = titles.filter((qt) => qt.status === 'proposed')
   const active     = titles.filter((qt) => qt.status === 'active')
   const shelved    = titles.filter((qt) => qt.status === 'shelved' || qt.status === 'rejected')
-  const upcoming   = active.filter((qt) => isUpcomingTitle(qt.title))
-  const upNext     = active.filter((qt) => !isUpcomingTitle(qt.title) && qt.member_entries.some((m) => m.entry?.status !== 'watched'))
-  const allWatched = active.filter((qt) => !isUpcomingTitle(qt.title) && qt.member_entries.every((m) => m.entry?.status === 'watched'))
+  const upcoming   = active.filter((qt) => isUpcomingForQueue(qt, currentUserId))
+  const upNext     = active.filter((qt) => !isUpcomingForQueue(qt, currentUserId) && qt.member_entries.some((m) => m.entry?.status !== 'watched'))
+  const allWatched = active.filter((qt) => !isUpcomingForQueue(qt, currentUserId) && qt.member_entries.every((m) => m.entry?.status === 'watched'))
 
   if (titles.length === 0) {
     return (
