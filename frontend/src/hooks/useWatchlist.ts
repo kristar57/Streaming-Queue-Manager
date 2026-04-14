@@ -326,10 +326,10 @@ export function useWatchlist(userId?: string) {
     [updateEntry]
   )
 
-  // Set or clear a rating on an entry (-1 = Pass, 1 = Good, 2 = Loved, null = clear)
+  // Set or clear a rating on an entry (-1 = 👎, 1/2/3 = 👍 levels, null = clear)
   // Clearing the session rec cache so recs regenerate with the new signal.
   const rateEntry = useCallback(
-    async (entryId: string, rating: -1 | 1 | 2 | null, userId: string) => {
+    async (entryId: string, rating: -1 | 1 | 2 | 3 | null, userId: string) => {
       const { error } = await supabase
         .from('watchlist_entries')
         .update({ user_rating: rating })

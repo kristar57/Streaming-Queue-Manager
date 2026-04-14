@@ -29,7 +29,7 @@ interface EntryCardProps {
   onReorder?: (id: string, dir: 'up' | 'down') => void
   onRecommend: (entry: WatchlistEntryWithTitle) => void
   onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
-  onRate: (entry: WatchlistEntryWithTitle, rating: -1 | 1 | 2 | null) => void
+  onRate: (entry: WatchlistEntryWithTitle, rating: -1 | 1 | 2 | 3 | null) => void
   onDelete: (id: string) => void
   onViewDetail: (entry: WatchlistEntryWithTitle) => void
 }

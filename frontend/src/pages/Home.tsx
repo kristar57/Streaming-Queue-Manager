@@ -204,7 +204,7 @@ export default function Home() {
     filter.search || filter.statuses.length || filter.types.length ||
     filter.genres.length || filter.priorities.length || filter.viewerIds.length
 
-  async function handleRateEntry(entry: import('../types').WatchlistEntryWithTitle, rating: -1 | 1 | 2 | null) {
+  async function handleRateEntry(entry: import('../types').WatchlistEntryWithTitle, rating: -1 | 1 | 2 | 3 | null) {
     if (!user) return
     await rateEntry(entry.id, rating, user.id)
   }

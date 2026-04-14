@@ -21,7 +21,7 @@ interface EntryRowProps {
   onReorder?: (id: string, dir: 'up' | 'down') => void
   onRecommend: (entry: WatchlistEntryWithTitle) => void
   onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
-  onRate: (entry: WatchlistEntryWithTitle, rating: -1 | 1 | 2 | null) => void
+  onRate: (entry: WatchlistEntryWithTitle, rating: -1 | 1 | 2 | 3 | null) => void
   onDelete: (id: string) => void
   onViewDetail: (entry: WatchlistEntryWithTitle) => void
 }
@@ -185,7 +185,10 @@ export function EntryRow({
           )}
         </div>
 
-        {/* Expand toggle — always visible on mobile */}
+        {/* Rating — always visible */}
+        <RatingWidget compact rating={entry.user_rating ?? null} onChange={(r) => onRate(entry, r)} />
+
+        {/* Expand toggle */}
         <button
           onClick={() => setExpanded((v) => !v)}
           className="self-center flex-shrink-0 text-[var(--text-secondary)] hover:text-white transition-colors p-1 cursor-pointer"
@@ -195,12 +198,9 @@ export function EntryRow({
         </button>
       </div>
 
-      {/* Actions row — always visible on mobile via expand, desktop via hover group */}
+      {/* Actions row */}
       {expanded && (
         <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(36px+10px+8px)]">
-          <div className="w-full">
-            <RatingWidget rating={entry.user_rating ?? null} onChange={(r) => onRate(entry, r)} />
-          </div>
           {(entry.status === 'watching' || entry.status === 'want_to_watch') && title.type === 'show' && (
             <button
               onClick={() => onCaughtUpToggle(entry)}

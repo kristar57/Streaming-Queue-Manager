@@ -79,7 +79,7 @@ export interface WatchlistEntry {
   notes: string | null
   date_started: string | null
   date_completed: string | null
-  user_rating: -1 | 1 | 2 | null
+  user_rating: -1 | 1 | 2 | 3 | null
   created_at: string
   updated_at: string
 }

@@ -9,9 +9,10 @@ import type { WatchlistEntryWithTitle, QueueTitleWithMemberEntries, TMDBSearchRe
 // implicit positive signal; Pass entries contribute a blacklist.
 // ---------------------------------------------------------------
 function entryWeight(entry: WatchlistEntryWithTitle): number {
-  if (entry.user_rating === -1) return -1         // Pass — blacklist
-  if (entry.user_rating === 2)  return 3          // Loved
-  if (entry.user_rating === 1)  return 2          // Good
+  if (entry.user_rating === -1) return -1         // 👎 — blacklist
+  if (entry.user_rating === 3)  return 4          // 👍👍👍 — loved
+  if (entry.user_rating === 2)  return 3          // 👍👍 — really liked
+  if (entry.user_rating === 1)  return 2          // 👍 — liked
   if (entry.status === 'watched') return 1        // Finished — implicit positive
   return 0                                        // No usable signal
 }
@@ -115,7 +116,8 @@ export function useGroupRecs(
         const r = m.entry?.user_rating ?? null
         const status = m.entry?.status ?? null
         if (r === -1) { blacklisted = true; break }
-        if (r === 2) score += 3
+        if (r === 3) score += 4
+        else if (r === 2) score += 3
         else if (r === 1) score += 2
         else if (status === 'watched') score += 1
       }
@@ -188,7 +190,7 @@ export function usePartnerRecs(
           .from('watchlist_entries')
           .select('*, title:titles(*), profile:profiles(id, display_name)')
           .eq('user_id', partner.id)
-          .in('user_rating', [1, 2])
+          .in('user_rating', [1, 2, 3])
           .order('user_rating', { ascending: false })
           .limit(20)
 
