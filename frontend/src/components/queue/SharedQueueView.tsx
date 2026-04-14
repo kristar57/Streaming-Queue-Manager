@@ -197,7 +197,7 @@ function QueueRow({
       {expanded && (
         <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(16px+36px+10px+8px)]">
 
-          {/* Proposed — any non-proposer can approve or shelf; proposer can cancel */}
+          {/* Proposed — any non-proposer can approve, shelf, or reject; proposer can only withdraw */}
           {isProposed && !isProposer && (
             <>
               <button
@@ -211,6 +211,12 @@ function QueueRow({
                 className="px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-500/20 border border-sky-500/30 text-sky-300 hover:bg-sky-500/30 transition-colors cursor-pointer"
               >
                 📚 Save to shelf
+              </button>
+              <button
+                onClick={() => onRemove(qt.id)}
+                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 transition-colors cursor-pointer"
+              >
+                ✗ Reject
               </button>
             </>
           )}
