@@ -197,7 +197,7 @@ export interface QueueTitle {
   title_id: string
   added_by: string
   queue_position: number | null
-  status: 'proposed' | 'active' | 'rejected'
+  status: 'proposed' | 'active' | 'rejected' | 'shelved'
   created_at: string
   // Joined
   title?: Title

@@ -97,7 +97,7 @@ export default function Home() {
   // Active queue: null = personal list, string = shared queue id
   const [activeQueueId, setActiveQueueId] = useState<string | null>(null)
 
-  const { titles: queueTitles, loading: queueLoading, approveTitle, rejectTitle, removeTitle, reorderTitle } = useQueueDetail(activeQueueId)
+  const { titles: queueTitles, loading: queueLoading, approveTitle, rejectTitle, shelfTitle, removeTitle, reorderTitle } = useQueueDetail(activeQueueId)
 
   const [queueSearchBusy, setQueueSearchBusy] = useState(false)
   const [addAsProposal, setAddAsProposal] = useState(false)
@@ -415,6 +415,7 @@ export default function Home() {
               onReorder={reorderTitle}
               onApprove={approveTitle}
               onReject={rejectTitle}
+              onShelf={shelfTitle}
               onRemove={removeTitle}
               onMyStatusChange={setStatus}
               onViewDetail={setDetailEntry}
@@ -499,11 +500,12 @@ export default function Home() {
         <AddToQueueModal
           entry={addToQueueEntry}
           queues={queues}
-          onAdd={async (queueId) => {
+          onAdd={async (queueId, asProposal) => {
             const { error } = await supabase.from('queue_titles').insert({
               queue_id: queueId,
               title_id: addToQueueEntry.title_id,
               added_by: user.id,
+              status: asProposal ? 'proposed' : 'active',
             })
             if (error && error.code !== '23505') throw error
           }}

@@ -174,9 +174,15 @@ export function useQueueDetail(queueId: string | null) {
     await fetchDetail()
   }, [fetchDetail])
 
-  // Reject a proposed title (moves to rejected bucket for discussion before final removal)
+  // Reject a proposed title (hard no)
   const rejectTitle = useCallback(async (queueTitleId: string) => {
     await supabase.from('queue_titles').update({ status: 'rejected' }).eq('id', queueTitleId)
+    await fetchDetail()
+  }, [fetchDetail])
+
+  // Shelf a proposed title (not now, revisit later)
+  const shelfTitle = useCallback(async (queueTitleId: string) => {
+    await supabase.from('queue_titles').update({ status: 'shelved' }).eq('id', queueTitleId)
     await fetchDetail()
   }, [fetchDetail])
 
@@ -206,5 +212,5 @@ export function useQueueDetail(queueId: string | null) {
     await fetchDetail()
   }, [titles, fetchDetail])
 
-  return { members, titles, loading, addTitle, approveTitle, rejectTitle, removeTitle, reorderTitle, refresh: fetchDetail }
+  return { members, titles, loading, addTitle, approveTitle, rejectTitle, shelfTitle, removeTitle, reorderTitle, refresh: fetchDetail }
 }
