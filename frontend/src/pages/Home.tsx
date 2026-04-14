@@ -97,7 +97,7 @@ export default function Home() {
   // Active queue: null = personal list, string = shared queue id
   const [activeQueueId, setActiveQueueId] = useState<string | null>(null)
 
-  const { titles: queueTitles, loading: queueLoading, approveTitle, rejectTitle, shelfTitle, removeTitle, reorderTitle } = useQueueDetail(activeQueueId)
+  const { titles: queueTitles, loading: queueLoading, approveTitle, shelfTitle, removeTitle, reorderTitle } = useQueueDetail(activeQueueId)
 
   const [queueSearchBusy, setQueueSearchBusy] = useState(false)
   const [addAsProposal, setAddAsProposal] = useState(false)
@@ -414,7 +414,6 @@ export default function Home() {
               currentUserId={user?.id ?? ''}
               onReorder={reorderTitle}
               onApprove={approveTitle}
-              onReject={rejectTitle}
               onShelf={shelfTitle}
               onRemove={removeTitle}
               onMyStatusChange={setStatus}

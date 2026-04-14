@@ -9,7 +9,6 @@ interface SharedQueueViewProps {
   currentUserId: string
   onReorder: (id: string, dir: 'up' | 'down') => void
   onApprove: (queueTitleId: string) => void
-  onReject: (queueTitleId: string) => void
   onShelf: (queueTitleId: string) => void
   onRemove: (queueTitleId: string) => void
   onMyStatusChange: (entryId: string, status: 'want_to_watch' | 'watching' | 'watched') => void
@@ -52,7 +51,6 @@ interface QueueRowProps {
   availability: StreamingAvailability[]
   onReorder: (id: string, dir: 'up' | 'down') => void
   onApprove: (id: string) => void
-  onReject: (id: string) => void
   onShelf: (id: string) => void
   onRemove: (id: string) => void
   onMyStatusChange: (entryId: string, status: 'want_to_watch' | 'watching' | 'watched') => void
@@ -61,7 +59,7 @@ interface QueueRowProps {
 
 function QueueRow({
   qt, canMoveUp, canMoveDown, currentUserId, availability,
-  onReorder, onApprove, onReject, onShelf, onRemove, onMyStatusChange, onViewDetail,
+  onReorder, onApprove, onShelf, onRemove, onMyStatusChange, onViewDetail,
 }: QueueRowProps) {
   const { title } = qt
   const [expanded, setExpanded] = useState(false)
@@ -73,8 +71,7 @@ function QueueRow({
   const proposerName = qt.added_by_profile?.display_name ?? 'Someone'
   const isProposer   = qt.added_by === currentUserId
   const isProposed   = qt.status === 'proposed'
-  const isRejected   = qt.status === 'rejected'
-  const isShelved    = qt.status === 'shelved'
+  const isShelved    = qt.status === 'shelved' || qt.status === 'rejected'  // treat legacy rejected as shelved
 
   const statusChip = getTitleStatusChip(title)
   const runtime    = formatRuntime(title)
@@ -86,13 +83,13 @@ function QueueRow({
     watching:      { label: 'Mark watched',   status: 'watched' },
   }
 
-  const dimmed = isRejected || isShelved
+  const dimmed = isShelved
 
   return (
     <div className={`px-3 py-3 transition-colors ${dimmed ? 'opacity-60' : 'hover:bg-white/5'}`}>
       <div className="flex items-start gap-2.5">
         {/* Reorder arrows (active items only) */}
-        {!isProposed && !isRejected && !isShelved ? (
+        {!isProposed && !isShelved ? (
           <div className="flex flex-col gap-0.5 self-center flex-shrink-0 w-4">
             <button
               onClick={() => onReorder(qt.id, 'up')}
@@ -144,12 +141,7 @@ function QueueRow({
                 On the shelf
               </span>
             )}
-            {isRejected && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/20 text-red-300 flex-shrink-0">
-                Rejected
-              </span>
-            )}
-            {statusChip && !isProposed && !isRejected && !isShelved && (
+            {statusChip && !isProposed && !isShelved && (
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${CHIP_COLORS[statusChip.color]}`}>
                 {statusChip.label}
               </span>
@@ -165,7 +157,7 @@ function QueueRow({
           </div>
 
           {/* Member status dots (active items) */}
-          {!isProposed && !isRejected && !isShelved && (
+          {!isProposed && !isShelved && (
             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_LABEL[myStatus]?.color ?? STATUS_LABEL.want_to_watch.color}`}>
                 You: {STATUS_LABEL[myStatus]?.label ?? myStatus}
@@ -177,7 +169,7 @@ function QueueRow({
           )}
 
           {/* Streaming (active items) */}
-          {!isProposed && !isRejected && !isShelved && availability.length > 0 && (
+          {!isProposed && !isShelved && availability.length > 0 && (
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {availability.slice(0, 3).map((p) => (
                 <span key={p.provider_id} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-green-500/20 text-green-300 border border-green-500/30">
@@ -205,14 +197,14 @@ function QueueRow({
       {expanded && (
         <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(16px+36px+10px+8px)]">
 
-          {/* Proposed — non-proposer sees approve / shelf / reject */}
+          {/* Proposed — any non-proposer can approve or shelf; proposer can cancel */}
           {isProposed && !isProposer && (
             <>
               <button
                 onClick={() => onApprove(qt.id)}
                 className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30 transition-colors cursor-pointer"
               >
-                ✓ Approve
+                ✓ Add to queue
               </button>
               <button
                 onClick={() => onShelf(qt.id)}
@@ -220,16 +212,8 @@ function QueueRow({
               >
                 📚 Save to shelf
               </button>
-              <button
-                onClick={() => onReject(qt.id)}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 transition-colors cursor-pointer"
-              >
-                ✗ Reject
-              </button>
             </>
           )}
-
-          {/* Proposed — proposer can cancel */}
           {isProposed && isProposer && (
             <button
               onClick={() => onRemove(qt.id)}
@@ -239,7 +223,7 @@ function QueueRow({
             </button>
           )}
 
-          {/* Shelved — anyone can approve (move to active) or reject outright */}
+          {/* Shelved — any member can add to queue or remove */}
           {isShelved && (
             <>
               <button
@@ -274,43 +258,8 @@ function QueueRow({
             </>
           )}
 
-          {/* Rejected — restore or remove */}
-          {isRejected && (
-            <>
-              <button
-                onClick={() => onApprove(qt.id)}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-              >
-                Restore
-              </button>
-              {confirmRemove ? (
-                <>
-                  <button
-                    onClick={() => onRemove(qt.id)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 transition-colors cursor-pointer"
-                  >
-                    Remove permanently
-                  </button>
-                  <button
-                    onClick={() => setConfirmRemove(false)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setConfirmRemove(true)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-                >
-                  Remove…
-                </button>
-              )}
-            </>
-          )}
-
           {/* Active — status advance + remove */}
-          {!isProposed && !isRejected && !isShelved && (
+          {!isProposed && !isShelved && (
             <>
               {nextMyStatus[myStatus] && myEntry && (
                 <button
@@ -353,13 +302,12 @@ function QueueRow({
 
 export function SharedQueueView({
   titles, availability, currentUserId,
-  onReorder, onApprove, onReject, onShelf, onRemove, onMyStatusChange, onViewDetail,
+  onReorder, onApprove, onShelf, onRemove, onMyStatusChange, onViewDetail,
 }: SharedQueueViewProps) {
-  const proposed  = titles.filter((qt) => qt.status === 'proposed')
-  const active    = titles.filter((qt) => qt.status === 'active')
-  const shelved   = titles.filter((qt) => qt.status === 'shelved')
-  const rejected  = titles.filter((qt) => qt.status === 'rejected')
-  const upNext    = active.filter((qt) => qt.member_entries.some((m) => m.entry?.status !== 'watched'))
+  const proposed   = titles.filter((qt) => qt.status === 'proposed')
+  const active     = titles.filter((qt) => qt.status === 'active')
+  const shelved    = titles.filter((qt) => qt.status === 'shelved' || qt.status === 'rejected')
+  const upNext     = active.filter((qt) => qt.member_entries.some((m) => m.entry?.status !== 'watched'))
   const allWatched = active.filter((qt) => qt.member_entries.every((m) => m.entry?.status === 'watched'))
 
   if (titles.length === 0) {
@@ -391,7 +339,6 @@ export function SharedQueueView({
               availability={availability[qt.title_id] ?? []}
               onReorder={onReorder}
               onApprove={onApprove}
-              onReject={onReject}
               onShelf={onShelf}
               onRemove={onRemove}
               onMyStatusChange={onMyStatusChange}
@@ -404,11 +351,10 @@ export function SharedQueueView({
 
   return (
     <div className="space-y-6">
-      {renderGroup(proposed,   'Proposed',    proposed)}
-      {renderGroup(upNext,     'Up next',     active)}
-      {renderGroup(allWatched, 'All watched', active)}
+      {renderGroup(proposed,   'Proposed',     proposed)}
+      {renderGroup(upNext,     'Up next',      active)}
+      {renderGroup(allWatched, 'All watched',  active)}
       {renderGroup(shelved,    'On the shelf', shelved)}
-      {renderGroup(rejected,   'Rejected',    rejected)}
     </div>
   )
 }
