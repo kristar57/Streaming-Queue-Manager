@@ -22,6 +22,7 @@ interface SharedQueueViewProps {
   onShelf: (queueTitleId: string) => void
   onRemove: (queueTitleId: string) => void
   onMyStatusChange: (entryId: string, status: 'want_to_watch' | 'watching' | 'watched') => void
+  onEdit: (entry: import('../../types').WatchlistEntryWithTitle) => void
   onViewDetail: (entry: import('../../types').WatchlistEntryWithTitle) => void
 }
 
@@ -64,12 +65,13 @@ interface QueueRowProps {
   onShelf: (id: string) => void
   onRemove: (id: string) => void
   onMyStatusChange: (entryId: string, status: 'want_to_watch' | 'watching' | 'watched') => void
+  onEdit: (entry: import('../../types').WatchlistEntryWithTitle) => void
   onViewDetail: (entry: import('../../types').WatchlistEntryWithTitle) => void
 }
 
 function QueueRow({
   qt, canMoveUp, canMoveDown, currentUserId, availability,
-  onReorder, onApprove, onShelf, onRemove, onMyStatusChange, onViewDetail,
+  onReorder, onApprove, onShelf, onRemove, onMyStatusChange, onEdit, onViewDetail,
 }: QueueRowProps) {
   const { title } = qt
   const [expanded, setExpanded] = useState(false)
@@ -306,6 +308,14 @@ function QueueRow({
                     {nextMyStatus[myStatus].label}
                   </button>
                 )}
+                {myEntry && (
+                  <button
+                    onClick={() => onEdit(myEntry)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
+                  >
+                    ✏ Edit
+                  </button>
+                )}
                 {confirmRemove ? (
                   <>
                     <button
@@ -340,7 +350,7 @@ function QueueRow({
 
 export function SharedQueueView({
   titles, availability, currentUserId,
-  onReorder, onApprove, onShelf, onRemove, onMyStatusChange, onViewDetail,
+  onReorder, onApprove, onShelf, onRemove, onMyStatusChange, onEdit, onViewDetail,
 }: SharedQueueViewProps) {
   const proposed   = titles.filter((qt) => qt.status === 'proposed')
   const active     = titles.filter((qt) => qt.status === 'active')
@@ -381,6 +391,7 @@ export function SharedQueueView({
               onShelf={onShelf}
               onRemove={onRemove}
               onMyStatusChange={onMyStatusChange}
+              onEdit={onEdit}
               onViewDetail={onViewDetail}
             />
           ))}

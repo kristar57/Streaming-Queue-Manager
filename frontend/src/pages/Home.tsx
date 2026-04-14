@@ -418,6 +418,7 @@ export default function Home() {
               onShelf={shelfTitle}
               onRemove={removeTitle}
               onMyStatusChange={setStatus}
+              onEdit={setEditingEntry}
               onViewDetail={setDetailEntry}
             />
           )
