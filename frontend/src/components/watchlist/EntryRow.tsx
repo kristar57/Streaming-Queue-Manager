@@ -9,9 +9,14 @@ interface EntryRowProps {
   entry: WatchlistEntryWithTitle
   providers: StreamingAvailability[]
   subscribedIds: Set<number>
+  canMoveUp?: boolean
+  canMoveDown?: boolean
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
   onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
+  onEdit: (entry: WatchlistEntryWithTitle) => void
+  onReorder?: (id: string, dir: 'up' | 'down') => void
+  onRecommend: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
 }
 
@@ -26,9 +31,14 @@ export function EntryRow({
   entry,
   providers,
   subscribedIds,
+  canMoveUp,
+  canMoveDown,
   onStatusChange,
   onPriorityCycle,
   onCaughtUpToggle,
+  onEdit,
+  onReorder,
+  onRecommend,
   onDelete,
 }: EntryRowProps) {
   const { title } = entry
@@ -48,6 +58,28 @@ export function EntryRow({
 
   return (
     <div className="flex items-start gap-3 px-4 py-3 hover:bg-white/5 transition-colors group">
+      {/* Queue reorder arrows (Up Next only) */}
+      {onReorder && (
+        <div className="flex flex-col gap-0.5 self-center flex-shrink-0">
+          <button
+            onClick={() => onReorder(entry.id, 'up')}
+            disabled={!canMoveUp}
+            className="text-[var(--text-secondary)] hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-xs leading-none"
+            title="Move up"
+          >
+            ▲
+          </button>
+          <button
+            onClick={() => onReorder(entry.id, 'down')}
+            disabled={!canMoveDown}
+            className="text-[var(--text-secondary)] hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-xs leading-none"
+            title="Move down"
+          >
+            ▼
+          </button>
+        </div>
+      )}
+
       {/* Poster thumbnail */}
       {title.poster_path ? (
         <img
@@ -86,6 +118,9 @@ export function EntryRow({
           {runtime && <span>· {runtime}</span>}
           {title.tmdb_rating && (
             <span className="text-yellow-400">· ★ {title.tmdb_rating.toFixed(1)}</span>
+          )}
+          {entry.profile && (
+            <span className="text-[var(--text-secondary)] opacity-60">· {entry.profile.display_name}</span>
           )}
         </div>
 
@@ -140,6 +175,8 @@ export function EntryRow({
             {nextStatus[entry.status]!.label}
           </Button>
         )}
+        <Button size="sm" variant="ghost" onClick={() => onEdit(entry)} title="Edit">✏</Button>
+        <Button size="sm" variant="ghost" onClick={() => onRecommend(entry)} title="Recommend to someone">↗</Button>
         {confirmDelete ? (
           <>
             <Button size="sm" variant="danger" onClick={() => onDelete(entry.id)}>Confirm</Button>

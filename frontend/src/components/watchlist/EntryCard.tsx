@@ -14,11 +14,16 @@ const CHIP_COLORS = {
 
 interface EntryCardProps {
   entry: WatchlistEntryWithTitle
-  providers: StreamingAvailability[]   // flatrate providers for this title
+  providers: StreamingAvailability[]
   subscribedIds: Set<number>
+  canMoveUp?: boolean
+  canMoveDown?: boolean
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
   onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
+  onEdit: (entry: WatchlistEntryWithTitle) => void
+  onReorder?: (id: string, dir: 'up' | 'down') => void
+  onRecommend: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
 }
 
@@ -26,9 +31,14 @@ export function EntryCard({
   entry,
   providers,
   subscribedIds,
+  canMoveUp,
+  canMoveDown,
   onStatusChange,
   onPriorityCycle,
   onCaughtUpToggle,
+  onEdit,
+  onReorder,
+  onRecommend,
   onDelete,
 }: EntryCardProps) {
   const { title } = entry
@@ -48,7 +58,6 @@ export function EntryCard({
   const runtime    = formatRuntime(title)
   const year       = releaseYear(title)
 
-  // Split providers: subscribed (green) vs. not subscribed (amber)
   const myProviders    = providers.filter((p) => subscribedIds.has(p.provider_id))
   const otherProviders = providers.filter((p) => !subscribedIds.has(p.provider_id))
 
@@ -80,9 +89,36 @@ export function EntryCard({
           <PriorityDot priority={entry.priority} />
         </button>
 
-        {/* Status chip overlay (coming soon, returning, etc.) */}
-        {statusChip && (
+        {/* Queue reorder arrows */}
+        {onReorder && (
+          <div className="absolute top-2 right-2 flex flex-col gap-0.5">
+            <button
+              onClick={() => onReorder(entry.id, 'up')}
+              disabled={!canMoveUp}
+              className="w-5 h-5 flex items-center justify-center rounded bg-black/60 text-white/70 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-[10px]"
+              title="Move up"
+            >
+              ▲
+            </button>
+            <button
+              onClick={() => onReorder(entry.id, 'down')}
+              disabled={!canMoveDown}
+              className="w-5 h-5 flex items-center justify-center rounded bg-black/60 text-white/70 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-[10px]"
+              title="Move down"
+            >
+              ▼
+            </button>
+          </div>
+        )}
+
+        {/* Status chip overlay (no reorder arrows above = top-right) */}
+        {statusChip && !onReorder && (
           <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${CHIP_COLORS[statusChip.color]}`}>
+            {statusChip.label}
+          </span>
+        )}
+        {statusChip && onReorder && (
+          <span className={`absolute bottom-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${CHIP_COLORS[statusChip.color]}`}>
             {statusChip.label}
           </span>
         )}
@@ -101,6 +137,11 @@ export function EntryCard({
             <><span>·</span><span className="text-yellow-400">★ {title.tmdb_rating.toFixed(1)}</span></>
           )}
         </div>
+
+        {/* Added by (if not own entry) */}
+        {entry.profile && (
+          <p className="text-[10px] text-[var(--text-secondary)] opacity-60">{entry.profile.display_name}</p>
+        )}
 
         {/* Tagline */}
         {title.tagline && (
@@ -219,6 +260,10 @@ export function EntryCard({
               {nextStatus[entry.status]!.label}
             </Button>
           )}
+          <div className="flex gap-1">
+            <Button size="sm" variant="ghost" className="flex-1 justify-center" onClick={() => onEdit(entry)} title="Edit">✏ Edit</Button>
+            <Button size="sm" variant="ghost" className="flex-1 justify-center" onClick={() => onRecommend(entry)} title="Recommend">↗ Rec</Button>
+          </div>
           {confirmDelete ? (
             <div className="flex gap-1">
               <Button size="sm" variant="danger" className="flex-1 justify-center" onClick={() => onDelete(entry.id)}>Yes, remove</Button>

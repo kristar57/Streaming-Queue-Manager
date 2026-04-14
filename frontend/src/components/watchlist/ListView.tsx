@@ -2,16 +2,19 @@ import { EntryRow } from './EntryRow'
 import type { WatchlistEntryWithTitle, EntryStatus, StreamingAvailability } from '../../types'
 
 interface ListViewProps {
-  groups: { label: string; entries: WatchlistEntryWithTitle[] }[]
+  groups: { label: string; entries: WatchlistEntryWithTitle[]; isUpNext?: boolean }[]
   availability: Record<string, StreamingAvailability[]>
   subscribedIds: Set<number>
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
   onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
+  onEdit: (entry: WatchlistEntryWithTitle) => void
+  onReorder: (id: string, dir: 'up' | 'down') => void
+  onRecommend: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
 }
 
-export function ListView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onCaughtUpToggle, onDelete }: ListViewProps) {
+export function ListView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onDelete }: ListViewProps) {
   return (
     <div className="space-y-6">
       {groups.map((group) =>
@@ -21,15 +24,20 @@ export function ListView({ groups, availability, subscribedIds, onStatusChange, 
               {group.label} ({group.entries.length})
             </h2>
             <div className="bg-[var(--bg-card)] rounded-xl border border-white/10 divide-y divide-white/5 overflow-hidden">
-              {group.entries.map((entry) => (
+              {group.entries.map((entry, idx) => (
                 <EntryRow
                   key={entry.id}
                   entry={entry}
                   providers={availability[entry.title_id] ?? []}
                   subscribedIds={subscribedIds}
+                  canMoveUp={group.isUpNext && idx > 0}
+                  canMoveDown={group.isUpNext && idx < group.entries.length - 1}
                   onStatusChange={onStatusChange}
                   onPriorityCycle={onPriorityCycle}
                   onCaughtUpToggle={onCaughtUpToggle}
+                  onEdit={onEdit}
+                  onReorder={group.isUpNext ? onReorder : undefined}
+                  onRecommend={onRecommend}
                   onDelete={onDelete}
                 />
               ))}

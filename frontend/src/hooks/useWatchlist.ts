@@ -140,7 +140,7 @@ export function useWatchlist() {
   const fetchEntries = useCallback(async () => {
     const { data, error } = await supabase
       .from('watchlist_entries')
-      .select('*, title:titles(*)')
+      .select('*, title:titles(*), profile:profiles(id, display_name)')
       .order('updated_at', { ascending: false })
 
     if (error) {
@@ -280,5 +280,38 @@ export function useWatchlist() {
     [fetchEntries]
   )
 
-  return { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, refresh: fetchEntries }
+  // Move an Up Next entry up or down in the manual queue order
+  const reorderEntry = useCallback(
+    async (entryId: string, direction: 'up' | 'down') => {
+      const upNext = [...entries]
+        .filter((e) => e.status === 'want_to_watch')
+        .sort((a, b) => {
+          if (a.queue_position === null && b.queue_position === null) return 0
+          if (a.queue_position === null) return 1
+          if (b.queue_position === null) return -1
+          return a.queue_position - b.queue_position
+        })
+
+      const idx = upNext.findIndex((e) => e.id === entryId)
+      if (idx === -1) return
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+      if (swapIdx < 0 || swapIdx >= upNext.length) return
+
+      // Normalise positions then swap
+      const positions = upNext.map((_, i) => i + 1)
+      const temp = positions[idx]
+      positions[idx] = positions[swapIdx]
+      positions[swapIdx] = temp
+
+      await Promise.all([
+        supabase.from('watchlist_entries').update({ queue_position: positions[idx] }).eq('id', upNext[idx].id),
+        supabase.from('watchlist_entries').update({ queue_position: positions[swapIdx] }).eq('id', upNext[swapIdx].id),
+      ])
+
+      await fetchEntries()
+    },
+    [entries, fetchEntries]
+  )
+
+  return { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry, refresh: fetchEntries }
 }

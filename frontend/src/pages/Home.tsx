@@ -4,10 +4,13 @@ import { useWatchlist } from '../hooks/useWatchlist'
 import { useSubscriptions } from '../hooks/useSubscriptions'
 import { TitleSearch } from '../components/title/TitleSearch'
 import { AddEntryForm } from '../components/title/AddEntryForm'
+import { EditEntryForm } from '../components/title/EditEntryForm'
 import { ListView } from '../components/watchlist/ListView'
 import { CardView } from '../components/watchlist/CardView'
 import { FilterBar } from '../components/watchlist/FilterBar'
+import { RecommendationsPanel, SendRecModal } from '../components/watchlist/RecommendationsPanel'
 import { Button } from '../components/ui/Button'
+import { supabase } from '../lib/supabase'
 import type {
   TMDBSearchResult,
   EntryFormFields,
@@ -21,11 +24,7 @@ import { DEFAULT_FILTER_STATE } from '../types'
 // ---------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------
-const STATUS_GROUPS: { status: EntryStatus; label: string }[] = [
-  { status: 'watching',      label: 'Currently watching' },
-  { status: 'want_to_watch', label: 'Up next' },
-  { status: 'watched',       label: 'Watched' },
-]
+const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 function applyFilters(
   entries: WatchlistEntryWithTitle[],
@@ -37,11 +36,10 @@ function applyFilters(
     if (filter.types.length && !filter.types.includes(e.title.type)) return false
     if (filter.priorities.length && !filter.priorities.includes(e.priority)) return false
     if (filter.genres.length && !filter.genres.some((g) => e.title.genres.includes(g))) return false
+    if (filter.viewerIds.length && !filter.viewerIds.includes(e.user_id)) return false
     return true
   })
 }
-
-const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 function applySorting(
   entries: WatchlistEntryWithTitle[],
@@ -64,19 +62,46 @@ function applySorting(
   })
 }
 
+// Sort Up Next by queue_position (nulls last), caught-up entries always last
+function sortUpNext(entries: WatchlistEntryWithTitle[]): WatchlistEntryWithTitle[] {
+  const active   = entries.filter((e) => !e.is_caught_up)
+  const caughtUp = entries.filter((e) => e.is_caught_up)
+
+  const byPosition = (a: WatchlistEntryWithTitle, b: WatchlistEntryWithTitle) => {
+    if (a.queue_position === null && b.queue_position === null) return 0
+    if (a.queue_position === null) return 1
+    if (b.queue_position === null) return -1
+    return a.queue_position - b.queue_position
+  }
+
+  return [...active.sort(byPosition), ...caughtUp.sort(byPosition)]
+}
+
 // ---------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------
 export default function Home() {
   const { user, profile, signOut } = useAuth()
-  const { entries, availability, loading, error, addEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry } = useWatchlist()
+  const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry } = useWatchlist()
   const { subscribedIds } = useSubscriptions(user?.id)
 
   const [pendingResult, setPendingResult] = useState<TMDBSearchResult | null>(null)
   const [pendingGenres, setPendingGenres] = useState<string[]>([])
+  const [editingEntry, setEditingEntry] = useState<WatchlistEntryWithTitle | null>(null)
+  const [recommendEntry, setRecommendEntry] = useState<WatchlistEntryWithTitle | null>(null)
   const [view, setView] = useState<'list' | 'card'>('list')
   const [showFilters, setShowFilters] = useState(false)
+  const [showRecs, setShowRecs] = useState(false)
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER_STATE)
+
+  // Derive viewer list from all entries' profiles
+  const availableViewers = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const e of entries) {
+      if (e.profile) map.set(e.profile.id, e.profile.display_name)
+    }
+    return [...map.entries()].map(([id, display_name]) => ({ id, display_name }))
+  }, [entries])
 
   const availableGenres = useMemo(() => {
     const set = new Set<string>()
@@ -89,14 +114,28 @@ export default function Home() {
     [entries, filter]
   )
 
-  const groups = STATUS_GROUPS.map(({ status, label }) => ({
-    label,
-    entries: filtered.filter((e) => e.status === status),
-  }))
+  // Build groups: Up Next sorted by queue_position (caught-up entries sink to bottom)
+  const groups = useMemo(() => [
+    {
+      label: 'Currently watching',
+      entries: filtered.filter((e) => e.status === 'watching' && !e.is_caught_up),
+      isUpNext: false,
+    },
+    {
+      label: 'Up next',
+      entries: sortUpNext(filtered.filter((e) => e.status === 'want_to_watch' || (e.status === 'watching' && e.is_caught_up))),
+      isUpNext: true,
+    },
+    {
+      label: 'Watched',
+      entries: filtered.filter((e) => e.status === 'watched'),
+      isUpNext: false,
+    },
+  ], [filtered])
 
   const hasActiveFilter =
     filter.search || filter.statuses.length || filter.types.length ||
-    filter.genres.length || filter.priorities.length
+    filter.genres.length || filter.priorities.length || filter.viewerIds.length
 
   async function handleAddEntry(fields: EntryFormFields) {
     if (!pendingResult || !user) return
@@ -104,6 +143,38 @@ export default function Home() {
     setPendingResult(null)
     setPendingGenres([])
   }
+
+  async function handleEditSave(fields: {
+    status: EntryStatus
+    priority: string
+    notes: string
+    is_caught_up: boolean
+    current_season: number | null
+    current_episode: number | null
+  }) {
+    if (!editingEntry) return
+    const patch: Record<string, unknown> = { ...fields }
+    if (fields.status === 'watching' && editingEntry.status !== 'watching') {
+      patch.date_started = new Date().toISOString()
+    }
+    if (fields.status === 'watched' && editingEntry.status !== 'watched') {
+      patch.date_completed = new Date().toISOString()
+    }
+    await updateEntry(editingEntry.id, patch as never)
+    setEditingEntry(null)
+  }
+
+  // Pending recommendations count (badge)
+  const [recCount, setRecCount] = useState(0)
+  useMemo(() => {
+    if (!user) return
+    supabase
+      .from('recommendations')
+      .select('id', { count: 'exact', head: true })
+      .eq('to_user_id', user.id)
+      .eq('status', 'pending')
+      .then(({ count }) => setRecCount(count ?? 0))
+  }, [user])
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-white">
@@ -118,6 +189,20 @@ export default function Home() {
           </span>
 
           <div className="flex-1" />
+
+          {/* Recommendations bell */}
+          <button
+            onClick={() => setShowRecs((v) => !v)}
+            className="relative px-2.5 py-1.5 rounded-lg text-sm text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+            title="Recommendations"
+          >
+            🔔
+            {recCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[var(--accent)] text-white text-[9px] font-bold flex items-center justify-center">
+                {recCount}
+              </span>
+            )}
+          </button>
 
           {/* View toggle */}
           <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/10">
@@ -140,6 +225,14 @@ export default function Home() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-5">
+        {/* Recommendations panel */}
+        {showRecs && user && (
+          <RecommendationsPanel
+            currentUserId={user.id}
+            onClose={() => { setShowRecs(false); setRecCount(0) }}
+          />
+        )}
+
         {/* Search bar */}
         <div className="flex gap-2 items-center">
           <div className="flex-1">
@@ -165,6 +258,7 @@ export default function Home() {
             <FilterBar
               filter={filter}
               availableGenres={availableGenres}
+              availableViewers={availableViewers}
               onChange={setFilter}
             />
           </div>
@@ -189,6 +283,9 @@ export default function Home() {
             onStatusChange={setStatus}
             onPriorityCycle={cyclePriority}
             onCaughtUpToggle={toggleCaughtUp}
+            onEdit={setEditingEntry}
+            onReorder={reorderEntry}
+            onRecommend={setRecommendEntry}
             onDelete={deleteEntry}
           />
         ) : (
@@ -199,6 +296,9 @@ export default function Home() {
             onStatusChange={setStatus}
             onPriorityCycle={cyclePriority}
             onCaughtUpToggle={toggleCaughtUp}
+            onEdit={setEditingEntry}
+            onReorder={reorderEntry}
+            onRecommend={setRecommendEntry}
             onDelete={deleteEntry}
           />
         )}
@@ -211,6 +311,24 @@ export default function Home() {
           genres={pendingGenres}
           onSubmit={handleAddEntry}
           onCancel={() => { setPendingResult(null); setPendingGenres([]) }}
+        />
+      )}
+
+      {/* Edit entry modal */}
+      {editingEntry && (
+        <EditEntryForm
+          entry={editingEntry}
+          onSubmit={handleEditSave}
+          onCancel={() => setEditingEntry(null)}
+        />
+      )}
+
+      {/* Send recommendation modal */}
+      {recommendEntry && user && (
+        <SendRecModal
+          entry={recommendEntry}
+          currentUserId={user.id}
+          onClose={() => setRecommendEntry(null)}
         />
       )}
     </div>

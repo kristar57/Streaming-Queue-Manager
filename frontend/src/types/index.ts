@@ -68,6 +68,7 @@ export interface WatchlistEntry {
   status: EntryStatus
   priority: EntryPriority
   is_caught_up: boolean
+  queue_position: number | null
   custom_tags: string[]
   current_season: number | null
   current_episode: number | null
@@ -164,6 +165,21 @@ export interface TMDBWatchProviders {
 
 export interface WatchlistEntryWithTitle extends WatchlistEntry {
   title: Title
+  profile?: { id: string; display_name: string }
+}
+
+export interface Recommendation {
+  id: string
+  from_user_id: string
+  to_user_id: string
+  title_id: string
+  message: string | null
+  status: 'pending' | 'accepted' | 'declined'
+  created_at: string
+  updated_at: string
+  // Joined
+  title?: Title
+  from_profile?: { id: string; display_name: string }
 }
 
 // Form fields when adding or editing a watchlist entry
@@ -186,6 +202,7 @@ export interface FilterState {
   types: TitleType[]
   genres: string[]
   priorities: EntryPriority[]
+  viewerIds: string[]        // empty = show all users' entries
   sortField: SortField
   sortDir: SortDir
 }
@@ -196,6 +213,7 @@ export const DEFAULT_FILTER_STATE: FilterState = {
   types: [],
   genres: [],
   priorities: [],
+  viewerIds: [],
   sortField: 'updated_at',
   sortDir: 'desc',
 }

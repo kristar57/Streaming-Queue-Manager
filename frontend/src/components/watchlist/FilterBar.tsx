@@ -3,6 +3,7 @@ import type { FilterState, EntryStatus, TitleType, EntryPriority, SortField } fr
 interface FilterBarProps {
   filter: FilterState
   availableGenres: string[]
+  availableViewers: { id: string; display_name: string }[]
   onChange: (f: FilterState) => void
 }
 
@@ -35,7 +36,7 @@ const SORT_OPTS: { value: SortField; label: string }[] = [
   { value: 'priority',    label: 'Priority' },
 ]
 
-export function FilterBar({ filter, availableGenres, onChange }: FilterBarProps) {
+export function FilterBar({ filter, availableGenres, availableViewers, onChange }: FilterBarProps) {
   const chip = (
     active: boolean,
     label: string,
@@ -96,6 +97,19 @@ export function FilterBar({ filter, availableGenres, onChange }: FilterBarProps)
           )
         )}
       </div>
+
+      {/* Viewer chips */}
+      {availableViewers.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {availableViewers.map((v) =>
+            chip(
+              filter.viewerIds.includes(v.id),
+              v.display_name,
+              () => onChange({ ...filter, viewerIds: toggle(filter.viewerIds, v.id) })
+            )
+          )}
+        </div>
+      )}
 
       {/* Genre chips */}
       {availableGenres.length > 0 && (
