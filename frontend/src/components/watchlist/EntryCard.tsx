@@ -216,8 +216,7 @@ export function EntryCard({
                     : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
                 }`}
               >
-                <span>👥</span>
-                <span>{q.queueName}{q.status !== 'active' ? ` (${q.status})` : ''}</span>
+                {q.queueName}{q.status !== 'active' ? ` (${q.status})` : ''}
               </span>
             ))}
           </div>

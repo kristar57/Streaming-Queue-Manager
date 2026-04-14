@@ -24,7 +24,7 @@ const CHIP_COLORS = {
 }
 
 const NEXT_STATUS: Partial<Record<EntryStatus, { label: string; status: EntryStatus }>> = {
-  anticipated:   { label: 'Move to Up Next', status: 'want_to_watch' },
+  upcoming:      { label: 'Move to Up Next', status: 'want_to_watch' },
   want_to_watch: { label: 'Start watching',  status: 'watching' },
   watching:      { label: 'Mark watched',    status: 'watched' },
 }

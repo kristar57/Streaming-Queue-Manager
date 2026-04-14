@@ -12,7 +12,7 @@ interface AddEntryFormProps {
 }
 
 const STATUS_OPTS: { value: EntryStatus; label: string }[] = [
-  { value: 'anticipated',   label: 'Anticipated' },
+  { value: 'upcoming',      label: 'Upcoming' },
   { value: 'want_to_watch', label: 'Up next' },
   { value: 'watching',      label: 'Watching' },
   { value: 'watched',       label: 'Watched' },
@@ -24,8 +24,14 @@ const PRIORITY_OPTS: { value: EntryPriority; label: string }[] = [
   { value: 'low',    label: 'Low' },
 ]
 
+function defaultStatus(result: TMDBSearchResult): EntryStatus {
+  const dateStr = result.release_date ?? result.first_air_date
+  if (dateStr && new Date(dateStr) > new Date()) return 'upcoming'
+  return 'want_to_watch'
+}
+
 export function AddEntryForm({ result, genres, onSubmit, onCancel }: AddEntryFormProps) {
-  const [status, setStatus] = useState<EntryStatus>('want_to_watch')
+  const [status, setStatus] = useState<EntryStatus>(() => defaultStatus(result))
   const [priority, setPriority] = useState<EntryPriority>('medium')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)

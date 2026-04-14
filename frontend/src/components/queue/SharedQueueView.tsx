@@ -2,7 +2,16 @@ import { useState } from 'react'
 import { thumbnailUrl } from '../../lib/tmdb'
 import { getTitleStatusChip, formatRuntime, releaseYear } from '../../lib/titleUtils'
 import { ShelfDecisionPanel } from './ShelfDecisionPanel'
-import type { QueueTitleWithMemberEntries, StreamingAvailability } from '../../types'
+import type { QueueTitleWithMemberEntries, StreamingAvailability, Title } from '../../types'
+
+function isUpcomingTitle(title: Title): boolean {
+  const today = new Date()
+  const releaseDate = title.release_date ? new Date(title.release_date) : null
+  if (releaseDate && releaseDate > today) return true
+  const status = title.tmdb_status
+  if (!status) return false
+  return ['In Production', 'Post Production', 'Planned', 'Rumored'].includes(status)
+}
 
 interface SharedQueueViewProps {
   titles: QueueTitleWithMemberEntries[]
@@ -20,7 +29,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   want_to_watch: { label: 'Up next',    color: 'bg-white/10 text-[var(--text-secondary)]' },
   watching:      { label: 'Watching',   color: 'bg-indigo-500/20 text-indigo-300' },
   watched:       { label: 'Watched',    color: 'bg-green-500/20 text-green-300' },
-  anticipated:   { label: 'Anticipated', color: 'bg-yellow-500/20 text-yellow-300' },
+  upcoming:      { label: 'Upcoming',    color: 'bg-yellow-500/20 text-yellow-300' },
 }
 
 const CHIP_COLORS = {
@@ -336,8 +345,9 @@ export function SharedQueueView({
   const proposed   = titles.filter((qt) => qt.status === 'proposed')
   const active     = titles.filter((qt) => qt.status === 'active')
   const shelved    = titles.filter((qt) => qt.status === 'shelved' || qt.status === 'rejected')
-  const upNext     = active.filter((qt) => qt.member_entries.some((m) => m.entry?.status !== 'watched'))
-  const allWatched = active.filter((qt) => qt.member_entries.every((m) => m.entry?.status === 'watched'))
+  const upcoming   = active.filter((qt) => isUpcomingTitle(qt.title))
+  const upNext     = active.filter((qt) => !isUpcomingTitle(qt.title) && qt.member_entries.some((m) => m.entry?.status !== 'watched'))
+  const allWatched = active.filter((qt) => !isUpcomingTitle(qt.title) && qt.member_entries.every((m) => m.entry?.status === 'watched'))
 
   if (titles.length === 0) {
     return (
@@ -381,6 +391,7 @@ export function SharedQueueView({
   return (
     <div className="space-y-6">
       {renderGroup(proposed,   'Proposed',     proposed)}
+      {renderGroup(upcoming,   'Upcoming',     upcoming)}
       {renderGroup(upNext,     'Up next',      active)}
       {renderGroup(allWatched, 'All watched',  active)}
       {renderGroup(shelved,    'On the shelf', shelved)}

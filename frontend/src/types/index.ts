@@ -3,7 +3,7 @@
 // ============================================================
 
 export type TitleType = 'movie' | 'show'
-export type EntryStatus = 'want_to_watch' | 'watching' | 'watched' | 'anticipated'
+export type EntryStatus = 'want_to_watch' | 'watching' | 'watched' | 'upcoming'
 export type EntryPriority = 'high' | 'medium' | 'low'
 export type AvailabilityType = 'flatrate' | 'rent' | 'buy' | 'ads' | 'free'
 export type NotificationType = 'now_streaming' | 'new_season' | 'leaving_soon'

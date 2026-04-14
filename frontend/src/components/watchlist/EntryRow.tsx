@@ -54,7 +54,7 @@ export function EntryRow({
   const [expanded, setExpanded] = useState(false)
 
   const nextStatus: Partial<Record<EntryStatus, { label: string; status: EntryStatus }>> = {
-    anticipated:   { label: 'Move to Up Next', status: 'want_to_watch' },
+    upcoming:      { label: 'Move to Up Next', status: 'want_to_watch' },
     want_to_watch: { label: 'Start watching',  status: 'watching' },
     watching:      { label: 'Mark watched',    status: 'watched' },
   }
@@ -140,8 +140,7 @@ export function EntryRow({
                       : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
                   }`}
                 >
-                  <span>👥</span>
-                  <span>{q.queueName}{q.status !== 'active' ? ` (${q.status})` : ''}</span>
+                  {q.queueName}{q.status !== 'active' ? ` (${q.status})` : ''}
                 </span>
               ))}
             </div>

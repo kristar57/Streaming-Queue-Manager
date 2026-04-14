@@ -37,7 +37,7 @@ export default function PrivacyPage() {
             <h2 className="text-base font-semibold text-[#e0e0e0] mb-3">What information we collect</h2>
             <ul className="space-y-2 list-none">
               <li><span className="text-[#909090] font-medium">Account info</span> — your email address and the display name you choose when registering.</li>
-              <li><span className="text-[#909090] font-medium">Watchlist data</span> — the titles you add to your queue, your watch status (up next, watching, watched, anticipated), notes, and ratings you provide.</li>
+              <li><span className="text-[#909090] font-medium">Watchlist data</span> — the titles you add to your queue, your watch status (up next, watching, watched, upcoming), notes, and ratings you provide.</li>
               <li><span className="text-[#909090] font-medium">Shared queue activity</span> — which shared queues you belong to, titles added to those queues, and each member's watch status within a queue. This is visible to all members of the shared queue.</li>
               <li><span className="text-[#909090] font-medium">Recommendations</span> — title recommendations you send to or receive from other members, including any message you include.</li>
             </ul>

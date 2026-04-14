@@ -35,7 +35,7 @@ export function StatusBadge({ status, isCaughtUp }: { status: EntryStatus; isCau
     want_to_watch: { label: 'Up next',     color: 'gray' },
     watching:      { label: 'Watching',    color: 'indigo' },
     watched:       { label: 'Watched',     color: 'green' },
-    anticipated:   { label: 'Anticipated', color: 'yellow' },
+    upcoming:      { label: 'Upcoming',    color: 'yellow' },
   }
   const { label, color } = map[status]
   return <Badge color={color}>{label}</Badge>

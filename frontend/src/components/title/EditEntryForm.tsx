@@ -18,7 +18,7 @@ interface EditEntryFormProps {
 }
 
 const STATUS_OPTS: { value: EntryStatus; label: string }[] = [
-  { value: 'anticipated',   label: 'Anticipated' },
+  { value: 'upcoming',      label: 'Upcoming' },
   { value: 'want_to_watch', label: 'Up next' },
   { value: 'watching',      label: 'Watching' },
   { value: 'watched',       label: 'Watched' },

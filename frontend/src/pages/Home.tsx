@@ -160,8 +160,8 @@ export default function Home() {
       isUpNext: true,
     },
     {
-      label: 'Anticipated',
-      entries: filtered.filter((e) => e.status === 'anticipated'),
+      label: 'Upcoming',
+      entries: filtered.filter((e) => e.status === 'upcoming'),
       isUpNext: false,
     },
     {

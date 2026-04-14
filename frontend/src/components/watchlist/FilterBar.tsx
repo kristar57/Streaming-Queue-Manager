@@ -14,7 +14,7 @@ function toggle<T>(arr: T[], val: T): T[] {
 const STATUS_OPTS: { value: EntryStatus; label: string }[] = [
   { value: 'watching',      label: 'Watching' },
   { value: 'want_to_watch', label: 'Up next' },
-  { value: 'anticipated',   label: 'Anticipated' },
+  { value: 'upcoming',      label: 'Upcoming' },
   { value: 'watched',       label: 'Watched' },
 ]
 
