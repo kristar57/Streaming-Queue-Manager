@@ -131,17 +131,23 @@ async function cacheAvailability(titleId: string, tmdbId: number, type: 'movie' 
 // ---------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------
-export function useWatchlist() {
+export function useWatchlist(userId?: string) {
   const [entries, setEntries] = useState<WatchlistEntryWithTitle[]>([])
   const [availability, setAvailability] = useState<Record<string, StreamingAvailability[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const fetchEntries = useCallback(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('watchlist_entries')
       .select('*, title:titles(*), profile:profiles(id, display_name)')
       .order('updated_at', { ascending: false })
+
+    // Always filter to the current user's own entries for the personal list.
+    // Shared queue views fetch other members' entries independently.
+    if (userId) query = query.eq('user_id', userId)
+
+    const { data, error } = await query
 
     if (error) {
       setError(error.message)

@@ -84,10 +84,7 @@ export function useSharedQueues(userId: string | undefined) {
 // ---------------------------------------------------------------
 // useQueueDetail — members + titles for a specific shared queue
 // ---------------------------------------------------------------
-export function useQueueDetail(
-  queueId: string | null,
-  allEntries: WatchlistEntryWithTitle[]  // personal watchlist entries for all users
-) {
+export function useQueueDetail(queueId: string | null) {
   const [members, setMembers] = useState<QueueMember[]>([])
   const [titles, setTitles] = useState<QueueTitleWithMemberEntries[]>([])
   const [loading, setLoading] = useState(false)
@@ -114,10 +111,23 @@ export function useQueueDetail(
 
     const rawTitles = (titleData ?? []) as (QueueTitleWithMemberEntries & { title: NonNullable<QueueTitleWithMemberEntries['title']> })[]
 
-    // Build entry index: user_id + title_id -> entry
+    // Fetch watchlist entries for all members for all titles in this queue.
+    // This is independent of the personal watchlist hook so we always get
+    // every member's status regardless of who is currently logged in.
+    const titleIds = rawTitles.map((qt) => qt.title_id)
+    const memberIds = memberList.map((m) => m.user_id)
     const entryIndex = new Map<string, WatchlistEntryWithTitle>()
-    for (const e of allEntries) {
-      entryIndex.set(`${e.user_id}:${e.title_id}`, e)
+
+    if (titleIds.length > 0 && memberIds.length > 0) {
+      const { data: entryData } = await supabase
+        .from('watchlist_entries')
+        .select('*, title:titles(*), profile:profiles(id, display_name)')
+        .in('user_id', memberIds)
+        .in('title_id', titleIds)
+
+      for (const e of (entryData ?? []) as WatchlistEntryWithTitle[]) {
+        entryIndex.set(`${e.user_id}:${e.title_id}`, e)
+      }
     }
 
     // Attach each member's entry to each title
@@ -132,7 +142,7 @@ export function useQueueDetail(
 
     setTitles(enriched)
     setLoading(false)
-  }, [queueId, allEntries])
+  }, [queueId])
 
   useEffect(() => {
     fetchDetail()

@@ -86,14 +86,14 @@ function sortUpNext(entries: WatchlistEntryWithTitle[]): WatchlistEntryWithTitle
 // ---------------------------------------------------------------
 export default function Home() {
   const { user, profile, signOut } = useAuth()
-  const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry } = useWatchlist()
+  const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry } = useWatchlist(user?.id)
   const { subscribedIds } = useSubscriptions(user?.id)
   const { queues } = useSharedQueues(user?.id)
 
   // Active queue: null = personal list, string = shared queue id
   const [activeQueueId, setActiveQueueId] = useState<string | null>(null)
 
-  const { titles: queueTitles, loading: queueLoading, addTitle, removeTitle, reorderTitle } = useQueueDetail(activeQueueId, entries)
+  const { titles: queueTitles, loading: queueLoading, removeTitle, reorderTitle } = useQueueDetail(activeQueueId)
 
   const [pendingResult, setPendingResult] = useState<TMDBSearchResult | null>(null)
   const [pendingGenres, setPendingGenres] = useState<string[]>([])
@@ -424,7 +424,14 @@ export default function Home() {
         <AddToQueueModal
           entry={addToQueueEntry}
           queues={queues}
-          onAdd={(queueId) => addTitle(queueId, user.id)}
+          onAdd={async (queueId) => {
+            const { error } = await supabase.from('queue_titles').insert({
+              queue_id: queueId,
+              title_id: addToQueueEntry.title_id,
+              added_by: user.id,
+            })
+            if (error && error.code !== '23505') throw error
+          }}
           onClose={() => setAddToQueueEntry(null)}
         />
       )}
