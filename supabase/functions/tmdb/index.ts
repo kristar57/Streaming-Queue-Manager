@@ -21,7 +21,10 @@ Deno.serve(async (req) => {
   })
   const data = await res.json()
 
+  // Forward TMDB's HTTP status so the client can distinguish errors
+  // from empty result sets (both would otherwise appear as HTTP 200).
   return new Response(JSON.stringify(data), {
+    status: res.status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 })
