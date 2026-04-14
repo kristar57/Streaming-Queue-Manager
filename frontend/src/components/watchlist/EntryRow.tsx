@@ -127,6 +127,7 @@ export function EntryRow({
             {title.genres.slice(0, 2).map((g) => <span key={g}>· {g}</span>)}
             {runtime && <span>· {runtime}</span>}
             {title.tmdb_rating && <span className="text-yellow-400">· ★ {title.tmdb_rating.toFixed(1)}</span>}
+            {title.network && <span>· {title.network}</span>}
             {entry.profile && entry.user_id !== currentUserId && <span className="opacity-60">· {entry.profile.display_name}</span>}
           </div>
 
