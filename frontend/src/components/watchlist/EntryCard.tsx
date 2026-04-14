@@ -18,6 +18,7 @@ interface EntryCardProps {
   subscribedIds: Set<number>
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
+  onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
 }
 
@@ -27,6 +28,7 @@ export function EntryCard({
   subscribedIds,
   onStatusChange,
   onPriorityCycle,
+  onCaughtUpToggle,
   onDelete,
 }: EntryCardProps) {
   const { title } = entry
@@ -192,11 +194,21 @@ export function EntryCard({
 
         {/* Status badge */}
         <div className="mt-auto pt-1">
-          <StatusBadge status={entry.status} />
+          <StatusBadge status={entry.status} isCaughtUp={entry.is_caught_up} />
         </div>
 
         {/* Actions */}
         <div className="flex flex-col gap-1.5">
+          {entry.status === 'watching' && entry.title.type === 'show' && (
+            <Button
+              size="sm"
+              variant={entry.is_caught_up ? 'primary' : 'secondary'}
+              className="w-full justify-center"
+              onClick={() => onCaughtUpToggle(entry)}
+            >
+              {entry.is_caught_up ? '✓ Caught up' : 'Mark caught up'}
+            </Button>
+          )}
           {nextStatus[entry.status] && (
             <Button
               size="sm"

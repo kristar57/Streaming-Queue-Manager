@@ -11,6 +11,7 @@ interface EntryRowProps {
   subscribedIds: Set<number>
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
+  onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
 }
 
@@ -27,6 +28,7 @@ export function EntryRow({
   subscribedIds,
   onStatusChange,
   onPriorityCycle,
+  onCaughtUpToggle,
   onDelete,
 }: EntryRowProps) {
   const { title } = entry
@@ -66,7 +68,7 @@ export function EntryRow({
           </button>
           <p className="text-sm font-medium text-white truncate">{title.title}</p>
           <div className="flex-shrink-0 ml-auto flex items-center gap-1.5">
-            <StatusBadge status={entry.status} />
+            <StatusBadge status={entry.status} isCaughtUp={entry.is_caught_up} />
             {statusChip && (
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${CHIP_COLORS[statusChip.color]}`}>
                 {statusChip.label}
@@ -123,6 +125,16 @@ export function EntryRow({
 
       {/* Actions (visible on hover) */}
       <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 self-center">
+        {entry.status === 'watching' && title.type === 'show' && (
+          <Button
+            size="sm"
+            variant={entry.is_caught_up ? 'primary' : 'ghost'}
+            onClick={() => onCaughtUpToggle(entry)}
+            title={entry.is_caught_up ? 'Mark as still watching' : 'Mark as caught up'}
+          >
+            {entry.is_caught_up ? '✓ Caught up' : 'Caught up'}
+          </Button>
+        )}
         {nextStatus[entry.status] && (
           <Button size="sm" variant="secondary" onClick={() => onStatusChange(entry.id, nextStatus[entry.status]!.status)}>
             {nextStatus[entry.status]!.label}

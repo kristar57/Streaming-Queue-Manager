@@ -238,13 +238,21 @@ export function useWatchlist() {
     [fetchEntries]
   )
 
-  // Quick status change — sets dates automatically
+  // Quick status change — sets dates automatically, resets caught-up flag
   const setStatus = useCallback(
     async (entryId: string, status: WatchlistEntryWithTitle['status']) => {
-      const patch: Record<string, unknown> = { status }
+      const patch: Record<string, unknown> = { status, is_caught_up: false }
       if (status === 'watching') patch.date_started = new Date().toISOString()
       if (status === 'watched') patch.date_completed = new Date().toISOString()
       await updateEntry(entryId, patch as never)
+    },
+    [updateEntry]
+  )
+
+  // Toggle caught-up state (shows only, while status = watching)
+  const toggleCaughtUp = useCallback(
+    async (entry: WatchlistEntryWithTitle) => {
+      await updateEntry(entry.id, { is_caught_up: !entry.is_caught_up } as never)
     },
     [updateEntry]
   )
@@ -272,5 +280,5 @@ export function useWatchlist() {
     [fetchEntries]
   )
 
-  return { entries, availability, loading, error, addEntry, updateEntry, setStatus, cyclePriority, deleteEntry, refresh: fetchEntries }
+  return { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, refresh: fetchEntries }
 }

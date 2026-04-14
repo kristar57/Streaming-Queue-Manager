@@ -7,10 +7,11 @@ interface ListViewProps {
   subscribedIds: Set<number>
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
+  onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
 }
 
-export function ListView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onDelete }: ListViewProps) {
+export function ListView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onCaughtUpToggle, onDelete }: ListViewProps) {
   return (
     <div className="space-y-6">
       {groups.map((group) =>
@@ -28,6 +29,7 @@ export function ListView({ groups, availability, subscribedIds, onStatusChange, 
                   subscribedIds={subscribedIds}
                   onStatusChange={onStatusChange}
                   onPriorityCycle={onPriorityCycle}
+                  onCaughtUpToggle={onCaughtUpToggle}
                   onDelete={onDelete}
                 />
               ))}

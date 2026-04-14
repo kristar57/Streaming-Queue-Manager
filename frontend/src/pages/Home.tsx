@@ -69,7 +69,7 @@ function applySorting(
 // ---------------------------------------------------------------
 export default function Home() {
   const { user, profile, signOut } = useAuth()
-  const { entries, availability, loading, error, addEntry, setStatus, cyclePriority, deleteEntry } = useWatchlist()
+  const { entries, availability, loading, error, addEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry } = useWatchlist()
   const { subscribedIds } = useSubscriptions(user?.id)
 
   const [pendingResult, setPendingResult] = useState<TMDBSearchResult | null>(null)
@@ -188,6 +188,7 @@ export default function Home() {
             subscribedIds={subscribedIds}
             onStatusChange={setStatus}
             onPriorityCycle={cyclePriority}
+            onCaughtUpToggle={toggleCaughtUp}
             onDelete={deleteEntry}
           />
         ) : (
@@ -197,6 +198,7 @@ export default function Home() {
             subscribedIds={subscribedIds}
             onStatusChange={setStatus}
             onPriorityCycle={cyclePriority}
+            onCaughtUpToggle={toggleCaughtUp}
             onDelete={deleteEntry}
           />
         )}

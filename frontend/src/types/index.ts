@@ -67,6 +67,7 @@ export interface WatchlistEntry {
   title_id: string
   status: EntryStatus
   priority: EntryPriority
+  is_caught_up: boolean
   custom_tags: string[]
   current_season: number | null
   current_episode: number | null

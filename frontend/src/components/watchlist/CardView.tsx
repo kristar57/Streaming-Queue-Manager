@@ -7,10 +7,11 @@ interface CardViewProps {
   subscribedIds: Set<number>
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
+  onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
 }
 
-export function CardView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onDelete }: CardViewProps) {
+export function CardView({ groups, availability, subscribedIds, onStatusChange, onPriorityCycle, onCaughtUpToggle, onDelete }: CardViewProps) {
   return (
     <div className="space-y-8">
       {groups.map((group) =>
@@ -31,6 +32,7 @@ export function CardView({ groups, availability, subscribedIds, onStatusChange, 
                   subscribedIds={subscribedIds}
                   onStatusChange={onStatusChange}
                   onPriorityCycle={onPriorityCycle}
+                  onCaughtUpToggle={onCaughtUpToggle}
                   onDelete={onDelete}
                 />
               ))}
