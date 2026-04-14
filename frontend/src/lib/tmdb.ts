@@ -125,3 +125,24 @@ export async function getWatchProviders(
   )
   return data.results?.[country] ?? {}
 }
+
+export interface TMDBProvider {
+  provider_id: number
+  provider_name: string
+  logo_path: string
+  display_priority: number
+}
+
+// Fetches the full list of streaming providers available in a region.
+// Results are sorted by display_priority (most prominent services first).
+export async function getAvailableProviders(country = 'US'): Promise<TMDBProvider[]> {
+  const [movies, tv] = await Promise.all([
+    tmdbCall<{ results: TMDBProvider[] }>('/watch/providers/movie', { watch_region: country }),
+    tmdbCall<{ results: TMDBProvider[] }>('/watch/providers/tv', { watch_region: country }),
+  ])
+  const map = new Map<number, TMDBProvider>()
+  for (const p of [...(movies.results ?? []), ...(tv.results ?? [])]) {
+    if (!map.has(p.provider_id)) map.set(p.provider_id, p)
+  }
+  return [...map.values()].sort((a, b) => a.display_priority - b.display_priority)
+}

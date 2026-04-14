@@ -188,8 +188,10 @@ export default function App() {
 
   return (
     <AuthContext.Provider value={{ user, profile, authReady, profileReady, signOut, refreshProfile }}>
-      {/* Consent gate — shown as an overlay for users who haven't accepted yet */}
-      {user && profileReady && consentAccepted === false && (
+      {/* Consent gate — shown as an overlay for users who haven't accepted yet.
+          Suppressed on /terms and /privacy so those pages are viewable during the consent flow. */}
+      {user && profileReady && consentAccepted === false &&
+       !['/terms', '/privacy'].includes(window.location.pathname) && (
         <ConsentScreen
           userId={user.id}
           onAccepted={() => {

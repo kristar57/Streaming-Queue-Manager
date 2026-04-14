@@ -16,8 +16,9 @@ import { SharedQueueView } from '../components/queue/SharedQueueView'
 import { AddToQueueModal } from '../components/queue/AddToQueueModal'
 import { QueueSettingsModal } from '../components/queue/QueueSettingsModal'
 import { Button } from '../components/ui/Button'
+import { StreamingServicesModal } from '../components/ui/StreamingServicesModal'
 import { supabase } from '../lib/supabase'
-import { upsertTitle } from '../hooks/useWatchlist'
+import { upsertTitle, cacheAvailability } from '../hooks/useWatchlist'
 import { Link } from 'react-router-dom'
 import type {
   TMDBSearchResult,
@@ -88,7 +89,7 @@ function sortUpNext(entries: WatchlistEntryWithTitle[]): WatchlistEntryWithTitle
 export default function Home() {
   const { user, profile, signOut } = useAuth()
   const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, deleteEntry, reorderEntry } = useWatchlist(user?.id)
-  const { subscribedIds } = useSubscriptions(user?.id)
+  const { subscriptions, subscribedIds, toggleSubscription } = useSubscriptions(user?.id)
   const { queues } = useSharedQueues(user?.id)
 
   // Active queue: null = personal list, string = shared queue id
@@ -109,6 +110,7 @@ export default function Home() {
   const [view, setView] = useState<'list' | 'card'>('list')
   const [showFilters, setShowFilters] = useState(false)
   const [showRecs, setShowRecs] = useState(false)
+  const [showServices, setShowServices] = useState(false)
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER_STATE)
   const [recCount, setRecCount] = useState(0)
 
@@ -226,6 +228,20 @@ export default function Home() {
             </Link>
           )}
 
+          {/* Streaming services */}
+          <button
+            onClick={() => setShowServices(true)}
+            className={`relative px-2.5 py-1.5 rounded-lg text-sm hover:text-white hover:bg-white/5 transition-colors cursor-pointer ${subscribedIds.size > 0 ? 'text-green-400' : 'text-[var(--text-secondary)]'}`}
+            title="My streaming services"
+          >
+            📺
+            {subscribedIds.size > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 text-white text-[9px] font-bold flex items-center justify-center">
+                {subscribedIds.size}
+              </span>
+            )}
+          </button>
+
           {/* Recommendations bell */}
           <button
             onClick={() => setShowRecs((v) => !v)}
@@ -302,6 +318,7 @@ export default function Home() {
                 setQueueSearchBusy(true)
                 try {
                   const titleId = await upsertTitle(result, genres)
+                  cacheAvailability(titleId, result.id, result.media_type === 'movie' ? 'movie' : 'tv')
                   const { error } = await supabase.from('queue_titles').insert({
                     queue_id: activeQueueId,
                     title_id: titleId,
@@ -483,6 +500,16 @@ export default function Home() {
           currentUserId={user.id}
           onCreated={(id) => { setShowCreateQueue(false); setActiveQueueId(id) }}
           onCancel={() => setShowCreateQueue(false)}
+        />
+      )}
+
+      {/* Streaming services modal */}
+      {showServices && (
+        <StreamingServicesModal
+          subscriptions={subscriptions}
+          subscribedIds={subscribedIds}
+          onToggle={toggleSubscription}
+          onClose={() => setShowServices(false)}
         />
       )}
 

@@ -90,7 +90,7 @@ export async function upsertTitle(result: TMDBSearchResult, genres: string[]): P
 // ---------------------------------------------------------------
 // Cache streaming availability for a title (fire-and-forget)
 // ---------------------------------------------------------------
-async function cacheAvailability(titleId: string, tmdbId: number, type: 'movie' | 'tv') {
+export async function cacheAvailability(titleId: string, tmdbId: number, type: 'movie' | 'tv') {
   try {
     const providers = await getWatchProviders(type, tmdbId)
     const rows: {
@@ -175,6 +175,13 @@ export function useWatchlist(userId?: string) {
         avMap[row.title_id].push(row)
       }
       setAvailability(avMap)
+
+      // Background re-sync for any titles that have no cached availability yet
+      for (const e of rows) {
+        if (!avMap[e.title_id] && e.title?.tmdb_id) {
+          cacheAvailability(e.title_id, e.title.tmdb_id, e.title.type === 'movie' ? 'movie' : 'tv')
+        }
+      }
     }
 
     setLoading(false)

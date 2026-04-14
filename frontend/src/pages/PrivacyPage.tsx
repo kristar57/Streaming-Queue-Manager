@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
 export default function PrivacyPage() {
   const navigate = useNavigate()
@@ -88,8 +88,8 @@ export default function PrivacyPage() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-white/8 flex flex-wrap gap-4 text-xs text-[#404040]">
-          <a href="/privacy" className="hover:text-[#909090] transition-colors">Privacy Policy</a>
-          <a href="/terms" className="hover:text-[#909090] transition-colors">Terms of Service</a>
+          <Link to="/privacy" className="hover:text-[#909090] transition-colors">Privacy Policy</Link>
+          <Link to="/terms" className="hover:text-[#909090] transition-colors">Terms of Service</Link>
         </div>
       </div>
     </div>

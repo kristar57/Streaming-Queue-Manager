@@ -16,9 +16,10 @@ function copyText(text: string) {
   navigator.clipboard.writeText(text).catch(() => {})
 }
 
-function buildEmailBody(code: string, appUrl: string, inviterName?: string): string {
+function buildEmailBody(code: string, appUrl: string, inviterName?: string, inviteeName?: string): string {
   const signoff = inviterName ? `— ${inviterName}` : '— The QueShare team'
-  return `Hi,
+  const salutation = inviteeName ? `Hi ${inviteeName},` : 'Hi,'
+  return `${salutation}
 
 ${inviterName ? `${inviterName} has invited you to join` : "You've been invited to join"} QueShare — a private app for tracking and sharing what you want to watch together.
 
@@ -86,6 +87,7 @@ export default function Admin() {
   // Invite send flow
   const [inviteStep, setInviteStep] = useState<InviteStep>('form')
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteeName, setInviteeName] = useState('')
   const [inviteFromName, setInviteFromName] = useState(profile?.display_name ?? '')
   const [generating, setGenerating] = useState(false)
   const [draft, setDraft] = useState<EmailDraft | null>(null)
@@ -133,6 +135,13 @@ export default function Admin() {
   useEffect(() => {
     loadCodes()
     loadUsers()
+
+    const channel = supabase
+      .channel('admin_invite_codes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invite_codes' }, loadCodes)
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [loadCodes, loadUsers])
 
   // ── Guard ────────────────────────────────────────────────────
@@ -149,7 +158,7 @@ export default function Admin() {
       await supabase.from('invite_codes').insert({ code, created_by: user!.id, expires_at: expiresAt })
       await loadCodes()
       const subject = `You're invited to QueShare`
-      const body = buildEmailBody(code, appUrl, inviteFromName.trim() || profile?.display_name)
+      const body = buildEmailBody(code, appUrl, inviteFromName.trim() || profile?.display_name, inviteeName.trim() || undefined)
       setDraft({ toEmail: inviteEmail.trim(), code, subject, body })
       setInviteStep('preview')
     } catch (err) {
@@ -184,6 +193,7 @@ export default function Admin() {
   function resetInviteFlow() {
     setInviteStep('form')
     setInviteEmail('')
+    setInviteeName('')
     setDraft(null)
     setSendError('')
   }
@@ -252,14 +262,23 @@ export default function Admin() {
                 <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">Send an invite</p>
 
                 <div className="space-y-2">
-                  <input
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleGenerateAndPreview() }}
-                    placeholder="Invitee email address"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleGenerateAndPreview() }}
+                      placeholder="Invitee email address"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
+                    />
+                    <input
+                      type="text"
+                      value={inviteeName}
+                      onChange={(e) => setInviteeName(e.target.value)}
+                      placeholder="Their name"
+                      className="w-36 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
                   <div className="flex gap-2">
                     <input
                       type="text"
