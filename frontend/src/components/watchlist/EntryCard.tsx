@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cardUrl, thumbnailUrl } from '../../lib/tmdb'
-import { StatusBadge, PriorityDot } from '../ui/Badge'
+import { PriorityDot } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { getTitleStatusChip, formatRuntime, releaseYear } from '../../lib/titleUtils'
 import type { WatchlistEntryWithTitle, EntryStatus, StreamingAvailability } from '../../types'
@@ -265,11 +265,6 @@ export function EntryCard({
             )}
           </div>
         )}
-
-        {/* Status badge */}
-        <div className="mt-auto pt-1">
-          <StatusBadge status={entry.status} isCaughtUp={entry.is_caught_up} />
-        </div>
 
         {/* Actions */}
         <div className="flex flex-col gap-1.5">

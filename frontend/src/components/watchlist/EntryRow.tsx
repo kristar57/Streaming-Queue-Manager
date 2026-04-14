@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { thumbnailUrl } from '../../lib/tmdb'
-import { StatusBadge, PriorityDot } from '../ui/Badge'
+import { PriorityDot } from '../ui/Badge'
 import { getTitleStatusChip, formatRuntime, releaseYear } from '../../lib/titleUtils'
 import type { WatchlistEntryWithTitle, EntryStatus, StreamingAvailability } from '../../types'
 import type { TitleQueueRef } from '../../hooks/useSharedQueues'
@@ -111,14 +111,11 @@ export function EntryRow({
             <button onClick={() => onViewDetail(entry)} className="text-sm font-medium text-white leading-snug flex-1 min-w-0 text-left hover:text-[var(--accent)] transition-colors cursor-pointer">
               {title.title}
             </button>
-            <div className="flex-shrink-0 flex items-center gap-1">
-              <StatusBadge status={entry.status} isCaughtUp={entry.is_caught_up} />
-              {statusChip && (
-                <span className={`hidden sm:inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${CHIP_COLORS[statusChip.color]}`}>
-                  {statusChip.label}
-                </span>
-              )}
-            </div>
+            {statusChip && (
+              <span className={`flex-shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${CHIP_COLORS[statusChip.color]}`}>
+                {statusChip.label}
+              </span>
+            )}
           </div>
 
           {/* Meta line */}
@@ -128,11 +125,6 @@ export function EntryRow({
             {runtime && <span>· {runtime}</span>}
             {title.tmdb_rating && <span className="text-yellow-400">· ★ {title.tmdb_rating.toFixed(1)}</span>}
             {entry.profile && entry.user_id !== currentUserId && <span className="opacity-60">· {entry.profile.display_name}</span>}
-            {statusChip && (
-              <span className={`sm:hidden px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${CHIP_COLORS[statusChip.color]}`}>
-                {statusChip.label}
-              </span>
-            )}
           </div>
 
           {/* Shared queue badges */}
