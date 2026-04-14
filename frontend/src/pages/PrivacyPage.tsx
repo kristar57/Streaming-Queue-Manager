@@ -72,7 +72,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-base font-semibold text-[#e0e0e0] mb-3">Deleting your data</h2>
-            <p>If you'd like your account and data removed, email us at <a href="mailto:hello@queshar.app" className="text-indigo-400 hover:text-indigo-300">hello@queshar.app</a>. We'll delete your account, watchlist entries, and queue memberships within a reasonable time. Note that titles you added to a shared queue may leave a record for other members in that queue.</p>
+            <p>If you'd like your account and data removed, email us at <a href="mailto:hello@queshare.com" className="text-indigo-400 hover:text-indigo-300">hello@queshare.com</a>. We'll delete your account, watchlist entries, and queue memberships within a reasonable time. Note that titles you added to a shared queue may leave a record for other members in that queue.</p>
           </section>
 
           <section>
@@ -82,7 +82,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-base font-semibold text-[#e0e0e0] mb-3">Questions?</h2>
-            <p>Reach out anytime at <a href="mailto:hello@queshar.app" className="text-indigo-400 hover:text-indigo-300">hello@queshar.app</a>.</p>
+            <p>Reach out anytime at <a href="mailto:hello@queshare.com" className="text-indigo-400 hover:text-indigo-300">hello@queshare.com</a>.</p>
           </section>
 
         </div>

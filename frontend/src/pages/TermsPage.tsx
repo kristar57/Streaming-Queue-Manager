@@ -72,7 +72,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-base font-semibold text-[#e0e0e0] mb-3">Questions?</h2>
-            <p>Email us at <a href="mailto:hello@queshar.app" className="text-indigo-400 hover:text-indigo-300">hello@queshar.app</a>.</p>
+            <p>Email us at <a href="mailto:hello@queshare.com" className="text-indigo-400 hover:text-indigo-300">hello@queshare.com</a>.</p>
           </section>
 
         </div>
