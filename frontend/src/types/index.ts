@@ -12,6 +12,8 @@ export interface Profile {
   id: string
   display_name: string
   is_admin: boolean
+  can_invite: boolean
+  is_disabled: boolean
   invited_by: string | null
   consent_accepted_at: string | null
   consent_policy_version: string | null

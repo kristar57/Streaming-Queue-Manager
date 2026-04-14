@@ -17,6 +17,7 @@ import { AddToQueueModal } from '../components/queue/AddToQueueModal'
 import { QueueSettingsModal } from '../components/queue/QueueSettingsModal'
 import { Button } from '../components/ui/Button'
 import { StreamingServicesModal } from '../components/ui/StreamingServicesModal'
+import { InviteModal } from '../components/ui/InviteModal'
 import { TitleDetailModal } from '../components/title/TitleDetailModal'
 import { supabase } from '../lib/supabase'
 import { upsertTitle, cacheAvailability } from '../hooks/useWatchlist'
@@ -112,6 +113,7 @@ export default function Home() {
   const [showFilters, setShowFilters] = useState(false)
   const [showRecs, setShowRecs] = useState(false)
   const [showServices, setShowServices] = useState(false)
+  const [showInvite, setShowInvite] = useState(false)
   const [detailEntry, setDetailEntry] = useState<WatchlistEntryWithTitle | null>(null)
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER_STATE)
   const [recCount, setRecCount] = useState(0)
@@ -228,6 +230,18 @@ export default function Home() {
             >
               Admin
             </Link>
+          )}
+
+          {/* Invite button — visible to admins and delegates */}
+          {(profile?.is_admin || profile?.can_invite) && (
+            <button
+              onClick={() => setShowInvite(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-[var(--text-secondary)] hover:text-white hover:bg-white/5 border border-white/10 transition-colors cursor-pointer flex-shrink-0"
+              title="Invite someone"
+            >
+              <span>✉</span>
+              <span className="hidden sm:inline">Invite</span>
+            </button>
           )}
 
           {/* Streaming services */}
@@ -518,6 +532,15 @@ export default function Home() {
           onRecommend={(entry) => { setRecommendEntry(entry); setDetailEntry(null) }}
           onAddToQueue={queues.length > 0 ? (entry) => { setAddToQueueEntry(entry); setDetailEntry(null) } : undefined}
           onDelete={(id) => { deleteEntry(id); setDetailEntry(null) }}
+        />
+      )}
+
+      {/* Invite modal */}
+      {showInvite && user && profile && (
+        <InviteModal
+          inviterName={profile.display_name}
+          inviterId={user.id}
+          onClose={() => setShowInvite(false)}
         />
       )}
 

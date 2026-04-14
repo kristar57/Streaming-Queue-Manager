@@ -49,6 +49,8 @@ interface UserProfile {
   id: string
   display_name: string
   is_admin: boolean
+  can_invite: boolean
+  is_disabled: boolean
   created_at: string
 }
 
@@ -127,7 +129,7 @@ export default function Admin() {
   const loadUsers = useCallback(async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, display_name, is_admin, created_at')
+      .select('id, display_name, is_admin, can_invite, is_disabled, created_at')
       .order('created_at', { ascending: true })
     setUsers((data ?? []) as UserProfile[])
   }, [])
@@ -222,6 +224,16 @@ export default function Admin() {
 
   async function toggleAdmin(userId: string, current: boolean) {
     await supabase.from('profiles').update({ is_admin: !current }).eq('id', userId)
+    await loadUsers()
+  }
+
+  async function toggleDelegate(userId: string, current: boolean) {
+    await supabase.from('profiles').update({ can_invite: !current }).eq('id', userId)
+    await loadUsers()
+  }
+
+  async function toggleDisabled(userId: string, current: boolean) {
+    await supabase.from('profiles').update({ is_disabled: !current }).eq('id', userId)
     await loadUsers()
   }
 
@@ -468,26 +480,54 @@ export default function Admin() {
         <Section title="Users">
           <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl divide-y divide-white/5 overflow-hidden">
             {users.map((u) => (
-              <div key={u.id} className="flex items-center gap-3 px-4 py-3">
+              <div key={u.id} className={`flex items-center gap-3 px-4 py-3 flex-wrap ${u.is_disabled ? 'opacity-50' : ''}`}>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white">{u.display_name}</p>
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5">
                     Joined {new Date(u.created_at).toLocaleDateString()}
+                    {u.is_disabled && <span className="ml-2 text-red-400">· Disabled</span>}
                   </p>
                 </div>
-                {u.is_admin && (
-                  <span className="text-[10px] border border-[var(--accent)]/40 text-[var(--accent)] rounded-full px-2 py-0.5">
-                    Admin
-                  </span>
-                )}
-                {u.id !== user!.id && (
-                  <button
-                    onClick={() => toggleAdmin(u.id, u.is_admin)}
-                    className="text-xs text-[var(--text-secondary)] hover:text-white border border-white/10 rounded px-2.5 py-1 transition-colors cursor-pointer"
-                  >
-                    {u.is_admin ? 'Remove admin' : 'Make admin'}
-                  </button>
-                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {u.is_admin && (
+                    <span className="text-[10px] border border-[var(--accent)]/40 text-[var(--accent)] rounded-full px-2 py-0.5">
+                      Admin
+                    </span>
+                  )}
+                  {u.can_invite && !u.is_admin && (
+                    <span className="text-[10px] border border-indigo-400/40 text-indigo-400 rounded-full px-2 py-0.5">
+                      Delegate
+                    </span>
+                  )}
+                  {u.id !== user!.id && (
+                    <>
+                      <button
+                        onClick={() => toggleAdmin(u.id, u.is_admin)}
+                        className="text-xs text-[var(--text-secondary)] hover:text-white border border-white/10 rounded px-2.5 py-1 transition-colors cursor-pointer"
+                      >
+                        {u.is_admin ? 'Remove admin' : 'Make admin'}
+                      </button>
+                      {!u.is_admin && (
+                        <button
+                          onClick={() => toggleDelegate(u.id, u.can_invite)}
+                          className="text-xs text-[var(--text-secondary)] hover:text-white border border-white/10 rounded px-2.5 py-1 transition-colors cursor-pointer"
+                        >
+                          {u.can_invite ? 'Remove delegate' : 'Make delegate'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => toggleDisabled(u.id, u.is_disabled)}
+                        className={`text-xs border rounded px-2.5 py-1 transition-colors cursor-pointer ${
+                          u.is_disabled
+                            ? 'text-green-400 border-green-500/30 hover:text-green-300'
+                            : 'text-red-400 border-red-500/20 hover:text-red-300'
+                        }`}
+                      >
+                        {u.is_disabled ? 'Enable' : 'Disable'}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
             {users.length === 0 && (

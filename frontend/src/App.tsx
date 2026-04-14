@@ -123,6 +123,16 @@ export default function App() {
       .eq('id', userId)
       .single()
     if (data) {
+      if (data.is_disabled) {
+        // Account disabled — sign out immediately
+        await supabase.auth.signOut()
+        setUser(null)
+        setProfile(null)
+        setProfileReady(false)
+        setConsentAccepted(null)
+        sessionStorage.removeItem(SESSION_CONSENT_KEY)
+        return
+      }
       setProfile(data as Profile)
       const accepted = !!data.consent_accepted_at
       if (accepted) sessionStorage.setItem(SESSION_CONSENT_KEY, '1')
