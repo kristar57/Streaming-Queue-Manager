@@ -126,6 +126,29 @@ export async function getWatchProviders(
   return data.results?.[country] ?? {}
 }
 
+// ---------------------------------------------------------------
+// Trailers — returns the first official YouTube trailer key, or null
+// ---------------------------------------------------------------
+
+interface TMDBVideo {
+  key: string
+  site: string
+  type: string
+  official: boolean
+}
+
+export async function getTrailerKey(
+  type: 'movie' | 'tv',
+  tmdbId: number
+): Promise<string | null> {
+  const data = await tmdbCall<{ results: TMDBVideo[] }>(`/${type}/${tmdbId}/videos`)
+  const videos = data.results ?? []
+  // Prefer official trailers, fall back to any trailer
+  const official = videos.find((v) => v.site === 'YouTube' && v.type === 'Trailer' && v.official)
+  const any      = videos.find((v) => v.site === 'YouTube' && v.type === 'Trailer')
+  return (official ?? any)?.key ?? null
+}
+
 export interface TMDBProvider {
   provider_id: number
   provider_name: string

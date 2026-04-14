@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c/Users/krist/Documents/Projects/Landscape Photography Planner/**)"
+      "Read(//c/Users/krist/Documents/Projects/Landscape Photography Planner/**)",
+      "Read(//c/Users/krist/.claude/projects/c--Users-krist-Documents-Projects-Streaming-Queue-Manager/memory/**)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\krist\\.claude\\projects\\c--Users-krist-Documents-Projects-Streaming-Queue-Manager\\memory"
     ]
   }
 }

@@ -1,6 +1,7 @@
 import { cardUrl, thumbnailUrl } from '../../lib/tmdb'
 import { getTitleStatusChip, formatRuntime, releaseYear } from '../../lib/titleUtils'
 import { StatusBadge } from '../ui/Badge'
+import { useTrailer } from '../../hooks/useTrailer'
 import type { WatchlistEntryWithTitle, EntryStatus, StreamingAvailability } from '../../types'
 
 interface TitleDetailModalProps {
@@ -40,6 +41,7 @@ export function TitleDetailModal({
   const runtime        = formatRuntime(title)
   const year           = releaseYear(title)
   const nextStatus     = NEXT_STATUS[entry.status]
+  const { trailerUrl } = useTrailer(title.tmdb_id, title.type)
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center">
@@ -242,6 +244,18 @@ export function TitleDetailModal({
                   Season {entry.current_season}{entry.current_episode ? `, Episode ${entry.current_episode}` : ''}
                 </p>
               </div>
+            )}
+
+            {/* Trailer */}
+            {trailerUrl && (
+              <a
+                href={trailerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-red-600/20 border border-red-600/30 text-red-400 text-sm font-medium hover:bg-red-600/30 transition-colors"
+              >
+                ▶ Watch Trailer
+              </a>
             )}
 
             {/* Actions */}

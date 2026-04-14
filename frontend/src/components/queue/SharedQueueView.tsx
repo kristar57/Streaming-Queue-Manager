@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { thumbnailUrl } from '../../lib/tmdb'
 import { getTitleStatusChip, formatRuntime, releaseYear } from '../../lib/titleUtils'
+import { ShelfDecisionPanel } from './ShelfDecisionPanel'
 import type { QueueTitleWithMemberEntries, StreamingAvailability } from '../../types'
 
 interface SharedQueueViewProps {
@@ -64,6 +65,7 @@ function QueueRow({
   const { title } = qt
   const [expanded, setExpanded] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [showShelfPanel, setShowShelfPanel] = useState(false)
 
   const myEntry = qt.member_entries.find((m) => m.user_id === currentUserId)?.entry ?? null
   const others  = qt.member_entries.filter((m) => m.user_id !== currentUserId)
@@ -71,7 +73,7 @@ function QueueRow({
   const proposerName = qt.added_by_profile?.display_name ?? 'Someone'
   const isProposer   = qt.added_by === currentUserId
   const isProposed   = qt.status === 'proposed'
-  const isShelved    = qt.status === 'shelved' || qt.status === 'rejected'  // treat legacy rejected as shelved
+  const isShelved    = qt.status === 'shelved' || qt.status === 'rejected'
 
   const statusChip = getTitleStatusChip(title)
   const runtime    = formatRuntime(title)
@@ -83,222 +85,247 @@ function QueueRow({
     watching:      { label: 'Mark watched',   status: 'watched' },
   }
 
-  const dimmed = isShelved
-
   return (
-    <div className={`px-3 py-3 transition-colors ${dimmed ? 'opacity-60' : 'hover:bg-white/5'}`}>
-      <div className="flex items-start gap-2.5">
-        {/* Reorder arrows (active items only) */}
-        {!isProposed && !isShelved ? (
-          <div className="flex flex-col gap-0.5 self-center flex-shrink-0 w-4">
-            <button
-              onClick={() => onReorder(qt.id, 'up')}
-              disabled={!canMoveUp}
-              className="text-[var(--text-secondary)] hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-[10px] leading-none"
-            >▲</button>
-            <button
-              onClick={() => onReorder(qt.id, 'down')}
-              disabled={!canMoveDown}
-              className="text-[var(--text-secondary)] hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-[10px] leading-none"
-            >▼</button>
-          </div>
-        ) : (
-          <div className="w-4 flex-shrink-0" />
-        )}
-
-        {/* Poster */}
-        <button
-          onClick={() => myEntry && onViewDetail(myEntry)}
-          disabled={!myEntry}
-          className={`flex-shrink-0 mt-0.5 ${myEntry ? 'cursor-pointer' : 'cursor-default'}`}
-        >
-          {title.poster_path ? (
-            <img src={thumbnailUrl(title.poster_path)} alt="" className={`w-9 h-[54px] object-cover rounded ${myEntry ? 'hover:opacity-80 transition-opacity' : ''}`} />
-          ) : (
-            <div className="w-9 h-[54px] bg-white/10 rounded flex items-center justify-center text-white/20 text-xs">?</div>
-          )}
-        </button>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          {/* Title row */}
-          <div className="flex items-start gap-2 flex-wrap">
-            <button
-              onClick={() => myEntry && onViewDetail(myEntry)}
-              disabled={!myEntry}
-              className={`text-sm font-medium text-white leading-snug text-left ${myEntry ? 'hover:text-[var(--accent)] transition-colors cursor-pointer' : ''}`}
-            >
-              {title.title}
-            </button>
-
-            {isProposed && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-500/20 text-yellow-300 flex-shrink-0">
-                {isProposer ? 'Proposed by you' : `Proposed by ${proposerName}`}
-              </span>
-            )}
-            {isShelved && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/20 text-sky-300 flex-shrink-0">
-                On the shelf
-              </span>
-            )}
-            {statusChip && !isProposed && !isShelved && (
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${CHIP_COLORS[statusChip.color]}`}>
-                {statusChip.label}
-              </span>
-            )}
-          </div>
-
-          {/* Meta */}
-          <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-[var(--text-secondary)] flex-wrap">
-            {year && <span>{year}</span>}
-            {title.genres.slice(0, 2).map((g) => <span key={g}>· {g}</span>)}
-            {runtime && <span>· {runtime}</span>}
-            {title.tmdb_rating && <span className="text-yellow-400">· ★ {title.tmdb_rating.toFixed(1)}</span>}
-          </div>
-
-          {/* Member status dots (active items) */}
-          {!isProposed && !isShelved && (
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_LABEL[myStatus]?.color ?? STATUS_LABEL.want_to_watch.color}`}>
-                You: {STATUS_LABEL[myStatus]?.label ?? myStatus}
-              </span>
-              {others.map((m) => (
-                <MemberStatusDot key={m.user_id} status={m.entry?.status ?? null} name={m.display_name} />
-              ))}
-            </div>
-          )}
-
-          {/* Streaming (active items) */}
-          {!isProposed && !isShelved && availability.length > 0 && (
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              {availability.slice(0, 3).map((p) => (
-                <span key={p.provider_id} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-green-500/20 text-green-300 border border-green-500/30">
-                  {p.provider_logo_path && (
-                    <img src={`https://image.tmdb.org/t/p/w45${p.provider_logo_path}`} alt="" className="w-3 h-3 rounded-sm object-cover" />
-                  )}
-                  {p.provider_name}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Expand toggle */}
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="self-center flex-shrink-0 text-[var(--text-secondary)] hover:text-white transition-colors p-1 cursor-pointer"
-          title="Actions"
-        >
-          <span className="text-xs">{expanded ? '▲' : '⋯'}</span>
-        </button>
-      </div>
-
-      {/* Actions row */}
-      {expanded && (
-        <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(16px+36px+10px+8px)]">
-
-          {/* Proposed — anyone can approve, shelf, reject, or withdraw */}
-          {isProposed && (
-            <>
-              <button
-                onClick={() => onApprove(qt.id)}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30 transition-colors cursor-pointer"
-              >
-                ✓ Add to queue
-              </button>
-              <button
-                onClick={() => onShelf(qt.id)}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-500/20 border border-sky-500/30 text-sky-300 hover:bg-sky-500/30 transition-colors cursor-pointer"
-              >
-                📚 Save to shelf
-              </button>
-              <button
-                onClick={() => onRemove(qt.id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                  isProposer
-                    ? 'bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white'
-                    : 'bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30'
-                }`}
-              >
-                {isProposer ? 'Withdraw' : '✗ Reject'}
-              </button>
-            </>
-          )}
-
-          {/* Shelved — anyone can add to queue or remove */}
-          {isShelved && (
-            <>
-              <button
-                onClick={() => onApprove(qt.id)}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30 transition-colors cursor-pointer"
-              >
-                ✓ Add to queue
-              </button>
-              {confirmRemove ? (
-                <>
-                  <button
-                    onClick={() => onRemove(qt.id)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 transition-colors cursor-pointer"
-                  >
-                    Remove permanently
-                  </button>
-                  <button
-                    onClick={() => setConfirmRemove(false)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setConfirmRemove(true)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-                >
-                  Remove…
-                </button>
-              )}
-            </>
-          )}
-
-          {/* Active — status advance + remove */}
-          {!isProposed && !isShelved && (
-            <>
-              {nextMyStatus[myStatus] && myEntry && (
-                <button
-                  onClick={() => onMyStatusChange(myEntry.id, nextMyStatus[myStatus].status)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-                >
-                  {nextMyStatus[myStatus].label}
-                </button>
-              )}
-              {confirmRemove ? (
-                <>
-                  <button
-                    onClick={() => onRemove(qt.id)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 transition-colors cursor-pointer"
-                  >
-                    Confirm remove
-                  </button>
-                  <button
-                    onClick={() => setConfirmRemove(false)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setConfirmRemove(true)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-                >
-                  Remove from queue
-                </button>
-              )}
-            </>
-          )}
-        </div>
+    <>
+      {/* Shelf decision panel — rendered at row level so it overlays correctly */}
+      {showShelfPanel && (
+        <ShelfDecisionPanel
+          qt={qt}
+          providers={availability}
+          onApprove={onApprove}
+          onRemove={onRemove}
+          onClose={() => setShowShelfPanel(false)}
+        />
       )}
-    </div>
+
+      <div className={`px-3 py-3 transition-colors ${isShelved ? 'opacity-60' : 'hover:bg-white/5'}`}>
+        <div className="flex items-start gap-2.5">
+          {/* Reorder arrows (active items only) */}
+          {!isProposed && !isShelved ? (
+            <div className="flex flex-col gap-0.5 self-center flex-shrink-0 w-4">
+              <button
+                onClick={() => onReorder(qt.id, 'up')}
+                disabled={!canMoveUp}
+                className="text-[var(--text-secondary)] hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-[10px] leading-none"
+              >▲</button>
+              <button
+                onClick={() => onReorder(qt.id, 'down')}
+                disabled={!canMoveDown}
+                className="text-[var(--text-secondary)] hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-[10px] leading-none"
+              >▼</button>
+            </div>
+          ) : (
+            <div className="w-4 flex-shrink-0" />
+          )}
+
+          {/* Poster */}
+          <button
+            onClick={() => {
+              if (isShelved) {
+                setShowShelfPanel(true)
+              } else if (myEntry) {
+                onViewDetail(myEntry)
+              }
+            }}
+            disabled={!isShelved && !myEntry}
+            className={`flex-shrink-0 mt-0.5 ${(isShelved || myEntry) ? 'cursor-pointer' : 'cursor-default'}`}
+          >
+            {title.poster_path ? (
+              <img src={thumbnailUrl(title.poster_path)} alt="" className={`w-9 h-[54px] object-cover rounded ${(isShelved || myEntry) ? 'hover:opacity-80 transition-opacity' : ''}`} />
+            ) : (
+              <div className="w-9 h-[54px] bg-white/10 rounded flex items-center justify-center text-white/20 text-xs">?</div>
+            )}
+          </button>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            {/* Title row */}
+            <div className="flex items-start gap-2 flex-wrap">
+              <button
+                onClick={() => {
+                  if (isShelved) {
+                    setShowShelfPanel(true)
+                  } else if (myEntry) {
+                    onViewDetail(myEntry)
+                  }
+                }}
+                disabled={!isShelved && !myEntry}
+                className={`text-sm font-medium text-white leading-snug text-left ${(isShelved || myEntry) ? 'hover:text-[var(--accent)] transition-colors cursor-pointer' : ''}`}
+              >
+                {title.title}
+              </button>
+
+              {isProposed && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-500/20 text-yellow-300 flex-shrink-0">
+                  {isProposer ? 'Proposed by you' : `Proposed by ${proposerName}`}
+                </span>
+              )}
+              {isShelved && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/20 text-sky-300 flex-shrink-0">
+                  On the shelf
+                </span>
+              )}
+              {statusChip && !isProposed && !isShelved && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${CHIP_COLORS[statusChip.color]}`}>
+                  {statusChip.label}
+                </span>
+              )}
+            </div>
+
+            {/* Meta */}
+            <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-[var(--text-secondary)] flex-wrap">
+              {year && <span>{year}</span>}
+              {title.genres.slice(0, 2).map((g) => <span key={g}>· {g}</span>)}
+              {runtime && <span>· {runtime}</span>}
+              {title.tmdb_rating && <span className="text-yellow-400">· ★ {title.tmdb_rating.toFixed(1)}</span>}
+            </div>
+
+            {/* Member status dots (active items) */}
+            {!isProposed && !isShelved && (
+              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${STATUS_LABEL[myStatus]?.color ?? STATUS_LABEL.want_to_watch.color}`}>
+                  You: {STATUS_LABEL[myStatus]?.label ?? myStatus}
+                </span>
+                {others.map((m) => (
+                  <MemberStatusDot key={m.user_id} status={m.entry?.status ?? null} name={m.display_name} />
+                ))}
+              </div>
+            )}
+
+            {/* Streaming (active items) */}
+            {!isProposed && !isShelved && availability.length > 0 && (
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                {availability.slice(0, 3).map((p) => (
+                  <span key={p.provider_id} className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-green-500/20 text-green-300 border border-green-500/30">
+                    {p.provider_logo_path && (
+                      <img src={`https://image.tmdb.org/t/p/w45${p.provider_logo_path}`} alt="" className="w-3 h-3 rounded-sm object-cover" />
+                    )}
+                    {p.provider_name}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Shelved — inline action buttons (no expand needed) */}
+            {isShelved && (
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => onApprove(qt.id)}
+                  className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30 active:scale-95 transition-all cursor-pointer"
+                >
+                  ✓ Add to queue
+                </button>
+                {confirmRemove ? (
+                  <>
+                    <button
+                      onClick={() => onRemove(qt.id)}
+                      className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 active:scale-95 transition-all cursor-pointer"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove(false)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setConfirmRemove(true)}
+                    className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 active:scale-95 transition-all cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Expand toggle — only for proposed and active items */}
+          {!isShelved && (
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="self-center flex-shrink-0 text-[var(--text-secondary)] hover:text-white transition-colors p-1 cursor-pointer"
+              title="Actions"
+            >
+              <span className="text-xs">{expanded ? '▲' : '⋯'}</span>
+            </button>
+          )}
+        </div>
+
+        {/* Expanded actions — proposed and active only */}
+        {expanded && !isShelved && (
+          <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(16px+36px+10px+8px)]">
+
+            {/* Proposed */}
+            {isProposed && (
+              <>
+                <button
+                  onClick={() => onApprove(qt.id)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30 transition-colors cursor-pointer"
+                >
+                  ✓ Add to queue
+                </button>
+                <button
+                  onClick={() => onShelf(qt.id)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-500/20 border border-sky-500/30 text-sky-300 hover:bg-sky-500/30 transition-colors cursor-pointer"
+                >
+                  📚 Save to shelf
+                </button>
+                <button
+                  onClick={() => onRemove(qt.id)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                    isProposer
+                      ? 'bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white'
+                      : 'bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30'
+                  }`}
+                >
+                  {isProposer ? 'Withdraw' : '✗ Reject'}
+                </button>
+              </>
+            )}
+
+            {/* Active */}
+            {!isProposed && (
+              <>
+                {nextMyStatus[myStatus] && myEntry && (
+                  <button
+                    onClick={() => onMyStatusChange(myEntry.id, nextMyStatus[myStatus].status)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
+                  >
+                    {nextMyStatus[myStatus].label}
+                  </button>
+                )}
+                {confirmRemove ? (
+                  <>
+                    <button
+                      onClick={() => onRemove(qt.id)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 transition-colors cursor-pointer"
+                    >
+                      Confirm remove
+                    </button>
+                    <button
+                      onClick={() => setConfirmRemove(false)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setConfirmRemove(true)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
+                  >
+                    Remove from queue
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 
