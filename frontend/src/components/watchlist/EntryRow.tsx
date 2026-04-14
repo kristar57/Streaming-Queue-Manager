@@ -170,7 +170,7 @@ export function EntryRow({
       {/* Actions row — always visible on mobile via expand, desktop via hover group */}
       {expanded && (
         <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(36px+10px+8px)]">
-          {entry.status === 'watching' && title.type === 'show' && (
+          {(entry.status === 'watching' || entry.status === 'want_to_watch') && title.type === 'show' && (
             <button
               onClick={() => onCaughtUpToggle(entry)}
               className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${

@@ -52,7 +52,7 @@ export function EditEntryForm({ entry, onSubmit, onCancel }: EditEntryFormProps)
         status,
         priority,
         notes,
-        is_caught_up: status === 'watching' && isShow ? isCaughtUp : false,
+        is_caught_up: (status === 'watching' || status === 'want_to_watch') && isShow ? isCaughtUp : false,
         current_season: currentSeason !== '' ? Number(currentSeason) : null,
         current_episode: currentEpisode !== '' ? Number(currentEpisode) : null,
       })
@@ -133,7 +133,7 @@ export function EditEntryForm({ entry, onSubmit, onCancel }: EditEntryFormProps)
         </div>
 
         {/* Show-specific: caught up + progress */}
-        {isShow && status === 'watching' && (
+        {isShow && (status === 'watching' || status === 'want_to_watch') && (
           <>
             <div>
               <label className="flex items-center gap-2 cursor-pointer">

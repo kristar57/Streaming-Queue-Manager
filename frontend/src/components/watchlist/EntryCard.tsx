@@ -242,7 +242,7 @@ export function EntryCard({
 
         {/* Actions */}
         <div className="flex flex-col gap-1.5">
-          {entry.status === 'watching' && entry.title.type === 'show' && (
+          {(entry.status === 'watching' || entry.status === 'want_to_watch') && entry.title.type === 'show' && (
             <Button
               size="sm"
               variant={entry.is_caught_up ? 'primary' : 'secondary'}
