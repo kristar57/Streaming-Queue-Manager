@@ -12,6 +12,7 @@ interface SharedQueueViewProps {
   onReject: (queueTitleId: string) => void
   onRemove: (queueTitleId: string) => void
   onMyStatusChange: (entryId: string, status: 'want_to_watch' | 'watching' | 'watched') => void
+  onViewDetail: (entry: import('../../types').WatchlistEntryWithTitle) => void
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
@@ -53,11 +54,12 @@ interface QueueRowProps {
   onReject: (id: string) => void
   onRemove: (id: string) => void
   onMyStatusChange: (entryId: string, status: 'want_to_watch' | 'watching' | 'watched') => void
+  onViewDetail: (entry: import('../../types').WatchlistEntryWithTitle) => void
 }
 
 function QueueRow({
   qt, canMoveUp, canMoveDown, currentUserId, availability,
-  onReorder, onApprove, onReject, onRemove, onMyStatusChange,
+  onReorder, onApprove, onReject, onRemove, onMyStatusChange, onViewDetail,
 }: QueueRowProps) {
   const { title } = qt
   const [expanded, setExpanded] = useState(false)
@@ -103,17 +105,29 @@ function QueueRow({
         )}
 
         {/* Poster */}
-        {title.poster_path ? (
-          <img src={thumbnailUrl(title.poster_path)} alt="" className="w-9 h-[54px] object-cover rounded flex-shrink-0 mt-0.5" />
-        ) : (
-          <div className="w-9 h-[54px] bg-white/10 rounded flex-shrink-0 mt-0.5 flex items-center justify-center text-white/20 text-xs">?</div>
-        )}
+        <button
+          onClick={() => myEntry && onViewDetail(myEntry)}
+          disabled={!myEntry}
+          className={`flex-shrink-0 mt-0.5 ${myEntry ? 'cursor-pointer' : 'cursor-default'}`}
+        >
+          {title.poster_path ? (
+            <img src={thumbnailUrl(title.poster_path)} alt="" className={`w-9 h-[54px] object-cover rounded ${myEntry ? 'hover:opacity-80 transition-opacity' : ''}`} />
+          ) : (
+            <div className="w-9 h-[54px] bg-white/10 rounded flex items-center justify-center text-white/20 text-xs">?</div>
+          )}
+        </button>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Title row */}
           <div className="flex items-start gap-2 flex-wrap">
-            <p className="text-sm font-medium text-white leading-snug">{title.title}</p>
+            <button
+              onClick={() => myEntry && onViewDetail(myEntry)}
+              disabled={!myEntry}
+              className={`text-sm font-medium text-white leading-snug text-left ${myEntry ? 'hover:text-[var(--accent)] transition-colors cursor-pointer' : ''}`}
+            >
+              {title.title}
+            </button>
 
             {/* Status badge */}
             {isProposed && (
@@ -288,7 +302,7 @@ function QueueRow({
 
 export function SharedQueueView({
   titles, availability, currentUserId,
-  onReorder, onApprove, onReject, onRemove, onMyStatusChange,
+  onReorder, onApprove, onReject, onRemove, onMyStatusChange, onViewDetail,
 }: SharedQueueViewProps) {
   const proposed  = titles.filter((qt) => qt.status === 'proposed')
   const active    = titles.filter((qt) => qt.status === 'active')
@@ -328,6 +342,7 @@ export function SharedQueueView({
               onReject={onReject}
               onRemove={onRemove}
               onMyStatusChange={onMyStatusChange}
+              onViewDetail={onViewDetail}
             />
           ))}
         </div>

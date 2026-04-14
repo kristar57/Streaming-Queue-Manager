@@ -403,6 +403,7 @@ export default function Home() {
               onReject={rejectTitle}
               onRemove={removeTitle}
               onMyStatusChange={setStatus}
+              onViewDetail={setDetailEntry}
             />
           )
         ) : (
