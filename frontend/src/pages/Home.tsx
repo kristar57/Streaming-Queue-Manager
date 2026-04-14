@@ -238,7 +238,7 @@ export default function Home() {
           >
             <span>📺</span>
             <span className="hidden sm:inline">
-              {subscribedIds.size > 0 ? `Services (${subscribedIds.size})` : 'Services'}
+              {subscriptions.length > 0 ? `Services (${subscriptions.length})` : 'Services'}
             </span>
           </button>
 

@@ -54,8 +54,8 @@ export function StreamingServicesModal({
         <div className="px-5 py-4 border-b border-white/10 flex-shrink-0">
           <h2 className="text-base font-semibold text-white">My Streaming Services</h2>
           <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-            {subscribedIds.size > 0
-              ? `${subscribedIds.size} service${subscribedIds.size !== 1 ? 's' : ''} selected — titles on these will show in green`
+            {subscriptions.length > 0
+              ? `${subscriptions.length} service${subscriptions.length !== 1 ? 's' : ''} selected — titles on these will show in green`
               : 'Select the services you subscribe to'}
           </p>
         </div>
