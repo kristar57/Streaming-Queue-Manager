@@ -6,7 +6,7 @@ import type { UserSubscription } from '../types'
 // subscribes to any one ID in a group, all IDs in that group are treated as
 // matching to handle TMDB data inconsistency.
 const PROVIDER_ALIAS_GROUPS: number[][] = [
-  [384, 1899],      // HBO Max / Max
+  [8, 384, 1899],   // HBO / HBO Max / Max
   [9, 119, 1024],   // Amazon Prime Video variants
 ]
 

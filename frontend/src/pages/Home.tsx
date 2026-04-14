@@ -17,6 +17,7 @@ import { AddToQueueModal } from '../components/queue/AddToQueueModal'
 import { QueueSettingsModal } from '../components/queue/QueueSettingsModal'
 import { Button } from '../components/ui/Button'
 import { StreamingServicesModal } from '../components/ui/StreamingServicesModal'
+import { TitleDetailModal } from '../components/title/TitleDetailModal'
 import { supabase } from '../lib/supabase'
 import { upsertTitle, cacheAvailability } from '../hooks/useWatchlist'
 import { Link } from 'react-router-dom'
@@ -111,6 +112,7 @@ export default function Home() {
   const [showFilters, setShowFilters] = useState(false)
   const [showRecs, setShowRecs] = useState(false)
   const [showServices, setShowServices] = useState(false)
+  const [detailEntry, setDetailEntry] = useState<WatchlistEntryWithTitle | null>(null)
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER_STATE)
   const [recCount, setRecCount] = useState(0)
 
@@ -428,6 +430,7 @@ export default function Home() {
               onRecommend={setRecommendEntry}
               onAddToQueue={queues.length > 0 ? setAddToQueueEntry : undefined}
               onDelete={deleteEntry}
+              onViewDetail={setDetailEntry}
             />
           ) : (
             <CardView
@@ -442,6 +445,7 @@ export default function Home() {
               onRecommend={setRecommendEntry}
               onAddToQueue={queues.length > 0 ? setAddToQueueEntry : undefined}
               onDelete={deleteEntry}
+              onViewDetail={setDetailEntry}
             />
           )
         )}
@@ -498,6 +502,21 @@ export default function Home() {
           currentUserId={user.id}
           onCreated={(id) => { setShowCreateQueue(false); setActiveQueueId(id) }}
           onCancel={() => setShowCreateQueue(false)}
+        />
+      )}
+
+      {/* Title detail modal */}
+      {detailEntry && (
+        <TitleDetailModal
+          entry={detailEntry}
+          providers={availability[detailEntry.title_id] ?? []}
+          subscribedIds={subscribedIds}
+          onClose={() => setDetailEntry(null)}
+          onStatusChange={(id, status) => { setStatus(id, status); setDetailEntry(null) }}
+          onEdit={(entry) => { setEditingEntry(entry); setDetailEntry(null) }}
+          onRecommend={(entry) => { setRecommendEntry(entry); setDetailEntry(null) }}
+          onAddToQueue={queues.length > 0 ? (entry) => { setAddToQueueEntry(entry); setDetailEntry(null) } : undefined}
+          onDelete={(id) => { deleteEntry(id); setDetailEntry(null) }}
         />
       )}
 

@@ -26,6 +26,7 @@ interface EntryCardProps {
   onRecommend: (entry: WatchlistEntryWithTitle) => void
   onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
+  onViewDetail: (entry: WatchlistEntryWithTitle) => void
 }
 
 export function EntryCard({
@@ -42,6 +43,7 @@ export function EntryCard({
   onRecommend,
   onAddToQueue,
   onDelete,
+  onViewDetail,
 }: EntryCardProps) {
   const { title } = entry
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -70,17 +72,19 @@ export function EntryCard({
 
       {/* Poster */}
       <div className="relative">
-        {title.poster_path ? (
-          <img
-            src={cardUrl(title.poster_path)}
-            alt={title.title}
-            className="w-full aspect-[2/3] object-cover"
-          />
-        ) : (
-          <div className="w-full aspect-[2/3] bg-white/10 flex items-center justify-center text-white/20 text-2xl">
-            ?
-          </div>
-        )}
+        <button onClick={() => onViewDetail(entry)} className="block w-full cursor-pointer">
+          {title.poster_path ? (
+            <img
+              src={cardUrl(title.poster_path)}
+              alt={title.title}
+              className="w-full aspect-[2/3] object-cover hover:opacity-85 transition-opacity"
+            />
+          ) : (
+            <div className="w-full aspect-[2/3] bg-white/10 flex items-center justify-center text-white/20 text-2xl">
+              ?
+            </div>
+          )}
+        </button>
 
         {/* Priority dot */}
         <button
@@ -129,7 +133,9 @@ export function EntryCard({
       {/* Body */}
       <div className="p-3 flex-1 flex flex-col gap-2 min-w-0">
         {/* Title */}
-        <p className="text-sm font-semibold text-white leading-tight line-clamp-2">{title.title}</p>
+        <button onClick={() => onViewDetail(entry)} className="text-sm font-semibold text-white leading-tight line-clamp-2 text-left hover:text-[var(--accent)] transition-colors cursor-pointer">
+          {title.title}
+        </button>
 
         {/* Year · runtime/seasons · rating */}
         <div className="flex items-center gap-1.5 flex-wrap text-xs text-[var(--text-secondary)]">

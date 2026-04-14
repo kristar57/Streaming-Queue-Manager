@@ -18,6 +18,7 @@ interface EntryRowProps {
   onRecommend: (entry: WatchlistEntryWithTitle) => void
   onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
   onDelete: (id: string) => void
+  onViewDetail: (entry: WatchlistEntryWithTitle) => void
 }
 
 const CHIP_COLORS = {
@@ -41,6 +42,7 @@ export function EntryRow({
   onRecommend,
   onAddToQueue,
   onDelete,
+  onViewDetail,
 }: EntryRowProps) {
   const { title } = entry
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -82,15 +84,17 @@ export function EntryRow({
         )}
 
         {/* Poster thumbnail */}
-        {title.poster_path ? (
-          <img
-            src={thumbnailUrl(title.poster_path)}
-            alt=""
-            className="w-9 h-[54px] object-cover rounded flex-shrink-0 mt-0.5"
-          />
-        ) : (
-          <div className="w-9 h-[54px] bg-white/10 rounded flex-shrink-0 mt-0.5 flex items-center justify-center text-white/20 text-xs">?</div>
-        )}
+        <button onClick={() => onViewDetail(entry)} className="cursor-pointer flex-shrink-0 mt-0.5">
+          {title.poster_path ? (
+            <img
+              src={thumbnailUrl(title.poster_path)}
+              alt=""
+              className="w-9 h-[54px] object-cover rounded hover:opacity-80 transition-opacity"
+            />
+          ) : (
+            <div className="w-9 h-[54px] bg-white/10 rounded flex items-center justify-center text-white/20 text-xs">?</div>
+          )}
+        </button>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
@@ -99,7 +103,9 @@ export function EntryRow({
             <button onClick={() => onPriorityCycle(entry)} className="cursor-pointer flex-shrink-0 mt-0.5" title="Cycle priority">
               <PriorityDot priority={entry.priority} />
             </button>
-            <p className="text-sm font-medium text-white leading-snug flex-1 min-w-0">{title.title}</p>
+            <button onClick={() => onViewDetail(entry)} className="text-sm font-medium text-white leading-snug flex-1 min-w-0 text-left hover:text-[var(--accent)] transition-colors cursor-pointer">
+              {title.title}
+            </button>
             <div className="flex-shrink-0 flex items-center gap-1">
               <StatusBadge status={entry.status} isCaughtUp={entry.is_caught_up} />
               {statusChip && (
@@ -127,6 +133,7 @@ export function EntryRow({
           {/* Streaming providers (compact) */}
           {(myProviders.length > 0 || otherProviders.length > 0) && (
             <div className="flex items-center gap-1 mt-1 flex-wrap">
+              <span className="text-[10px] text-[var(--text-secondary)]">Available on:</span>
               {myProviders.slice(0, 2).map((p) => (
                 <span
                   key={p.provider_id}
