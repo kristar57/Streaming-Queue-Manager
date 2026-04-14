@@ -18,6 +18,7 @@ export function StreamingServicesModal({
   const [providers, setProviders] = useState<TMDBProvider[]>([])
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState<number | null>(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     getAvailableProviders('US')
@@ -39,27 +40,24 @@ export function StreamingServicesModal({
     }
   }
 
+  const filtered = providers.filter((p) =>
+    !subscribedIds.has(p.provider_id) &&
+    p.provider_name.toLowerCase().includes(search.toLowerCase())
+  )
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full sm:max-w-lg bg-[var(--bg-card)] border border-white/10 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
-          <div>
-            <h2 className="text-base font-semibold text-white">My Streaming Services</h2>
-            <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              {subscribedIds.size > 0
-                ? `${subscribedIds.size} service${subscribedIds.size !== 1 ? 's' : ''} selected — titles on these will show in green`
-                : 'Select the services you subscribe to'}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-[var(--text-secondary)] hover:text-white transition-colors text-lg leading-none cursor-pointer p-1"
-          >
-            ✕
-          </button>
+        <div className="px-5 py-4 border-b border-white/10 flex-shrink-0">
+          <h2 className="text-base font-semibold text-white">My Streaming Services</h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+            {subscribedIds.size > 0
+              ? `${subscribedIds.size} service${subscribedIds.size !== 1 ? 's' : ''} selected — titles on these will show in green`
+              : 'Select the services you subscribe to'}
+          </p>
         </div>
 
         {/* Subscribed first */}
@@ -85,40 +83,55 @@ export function StreamingServicesModal({
           </div>
         )}
 
+        {/* Search */}
+        <div className="px-5 pt-3 pb-2 flex-shrink-0">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search services…"
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+          />
+        </div>
+
         {/* All providers */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="flex-1 overflow-y-auto px-5 py-2">
           {loading ? (
             <div className="text-center py-8 text-[var(--text-secondary)] text-sm">Loading services…</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-8 text-[var(--text-secondary)] text-sm">
+              {search ? `No results for "${search}"` : 'All services already selected'}
+            </div>
           ) : (
-            <>
-              {subscriptions.length > 0 && (
-                <p className="text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">All services</p>
-              )}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {providers
-                  .filter((p) => !subscribedIds.has(p.provider_id))
-                  .map((p) => (
-                    <button
-                      key={p.provider_id}
-                      onClick={() => handleToggle(p)}
-                      disabled={toggling === p.provider_id}
-                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-[var(--text-secondary)] text-xs hover:bg-white/10 hover:text-white hover:border-white/20 transition-colors cursor-pointer disabled:opacity-50 text-left"
-                    >
-                      {p.logo_path && (
-                        <img src={`https://image.tmdb.org/t/p/w45${p.logo_path}`} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
-                      )}
-                      <span className="truncate">{p.provider_name}</span>
-                    </button>
-                  ))}
-              </div>
-            </>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {filtered.map((p) => (
+                <button
+                  key={p.provider_id}
+                  onClick={() => handleToggle(p)}
+                  disabled={toggling === p.provider_id}
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-[var(--text-secondary)] text-xs hover:bg-white/10 hover:text-white hover:border-white/20 transition-colors cursor-pointer disabled:opacity-50 text-left"
+                >
+                  {p.logo_path && (
+                    <img src={`https://image.tmdb.org/t/p/w45${p.logo_path}`} alt="" className="w-5 h-5 rounded object-cover flex-shrink-0" />
+                  )}
+                  <span className="truncate">{p.provider_name}</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
-        <div className="px-5 py-3 border-t border-white/10 flex-shrink-0">
-          <p className="text-[11px] text-[var(--text-secondary)] text-center">
-            Powered by TMDB · US providers · Availability updated when titles are added
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-white/10 flex-shrink-0 flex items-center justify-between gap-3">
+          <p className="text-[11px] text-[var(--text-secondary)]">
+            Powered by TMDB · US providers
           </p>
+          <button
+            onClick={onClose}
+            className="px-5 py-2 bg-[var(--accent)] hover:opacity-90 text-white font-semibold rounded-xl text-sm transition-opacity cursor-pointer"
+          >
+            Done
+          </button>
         </div>
       </div>
     </div>
