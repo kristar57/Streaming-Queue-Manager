@@ -53,9 +53,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export function FilterBar({ filter, availableGenres, availableViewers, onChange }: FilterBarProps) {
   const [genresOpen, setGenresOpen] = useState(false)
 
-  const hasAnyFilter =
+  const hasAnyFilter = !!(
     filter.search || filter.statuses.length || filter.types.length ||
     filter.priorities.length || filter.viewerIds.length || filter.genres.length
+  )
 
   function clearAll() {
     onChange({ ...filter, search: '', statuses: [], types: [], priorities: [], viewerIds: [], genres: [] })
