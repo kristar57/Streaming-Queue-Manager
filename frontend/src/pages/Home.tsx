@@ -27,7 +27,6 @@ import { useRecDismissals } from '../hooks/useRecDismissals'
 import type { NavPage } from '../components/layout/AppShell'
 import { supabase } from '../lib/supabase'
 import { upsertTitle, cacheAvailability } from '../hooks/useWatchlist'
-import { Link } from 'react-router-dom'
 import { PolicyFooter } from '../components/ui/PolicyFooter'
 import type {
   TMDBSearchResult,
@@ -654,66 +653,47 @@ export default function Home() {
   }
 
   // ── Page: Settings ────────────────────────────────────────────
-  function renderSettings() {
+  function renderProfile() {
     return (
-      <div className="max-w-4xl mx-auto px-1 sm:px-4 py-3 sm:py-4 space-y-3">
-        <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider px-1">Settings</h2>
-
-        <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl overflow-hidden divide-y divide-white/10">
-          {/* Streaming Services */}
-          <button
-            onClick={() => setShowServices(true)}
-            className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-white hover:bg-white/5 transition-colors cursor-pointer text-left"
-          >
-            <span className="text-base">📺</span>
-            <div>
-              <div className="font-medium">Streaming Services</div>
-              <div className="text-xs text-[var(--text-secondary)] mt-0.5">
-                {subscriptions.length > 0 ? `${subscriptions.length} service${subscriptions.length !== 1 ? 's' : ''} configured` : 'No services added yet'}
-              </div>
-            </div>
-            <span className="ml-auto text-[var(--text-secondary)] text-xs">›</span>
-          </button>
-
-          {/* Invite */}
-          {(profile?.is_admin || profile?.can_invite) && (
-            <button
-              onClick={() => setShowInvite(true)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-white hover:bg-white/5 transition-colors cursor-pointer text-left"
-            >
-              <span className="text-base">✉</span>
-              <div>
-                <div className="font-medium">Invite Someone</div>
-                <div className="text-xs text-[var(--text-secondary)] mt-0.5">Send an invite link to join QueShare</div>
-              </div>
-              <span className="ml-auto text-[var(--text-secondary)] text-xs">›</span>
-            </button>
-          )}
-
-          {/* Admin */}
-          {profile?.is_admin && (
-            <Link
-              to="/admin"
-              className="flex items-center gap-3 px-4 py-3.5 text-sm text-white hover:bg-white/5 transition-colors"
-            >
-              <span className="text-base">🛡</span>
-              <div>
-                <div className="font-medium">Admin Panel</div>
-                <div className="text-xs text-[var(--text-secondary)] mt-0.5">Manage users and invite codes</div>
-              </div>
-              <span className="ml-auto text-[var(--text-secondary)] text-xs">›</span>
-            </Link>
-          )}
+      <div className="max-w-sm mx-auto px-1 sm:px-4 py-6 space-y-4">
+        {/* Avatar + name */}
+        <div className="flex items-center gap-4 px-1">
+          <div className="w-14 h-14 rounded-full bg-[var(--accent)]/20 border-2 border-[var(--accent)]/40 flex items-center justify-center text-2xl font-bold text-[var(--accent)]">
+            {profile?.display_name?.[0]?.toUpperCase() ?? '?'}
+          </div>
+          <div>
+            <p className="text-base font-semibold text-white">{profile?.display_name}</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5">QueShare member</p>
+          </div>
         </div>
 
-        {/* Account */}
+        {/* Recommendations toggle */}
+        <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl overflow-hidden">
+          <button
+            onClick={() => handleToggleRecs(!recsEnabled)}
+            className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-white hover:bg-white/5 transition-colors cursor-pointer text-left"
+          >
+            <span className="text-base">✨</span>
+            <div className="flex-1">
+              <div className="font-medium">Recommendations</div>
+              <div className="text-xs text-[var(--text-secondary)] mt-0.5">
+                {recsEnabled ? 'Enabled — showing personalised picks' : 'Disabled'}
+              </div>
+            </div>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${recsEnabled ? 'bg-[var(--accent)]/20 text-[var(--accent)]' : 'bg-white/10 text-[var(--text-secondary)]'}`}>
+              {recsEnabled ? 'On' : 'Off'}
+            </span>
+          </button>
+        </div>
+
+        {/* Log out */}
         <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl overflow-hidden">
           <button
             onClick={signOut}
             className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-red-400 hover:bg-white/5 transition-colors cursor-pointer text-left"
           >
             <span className="text-base">↪</span>
-            <span>Sign out</span>
+            <span>Log out</span>
           </button>
         </div>
 
@@ -732,13 +712,15 @@ export default function Home() {
         profile={profile}
         onSignOut={signOut}
         onInvite={(profile?.is_admin || profile?.can_invite) ? () => setShowInvite(true) : undefined}
+        onStreamingServices={() => setShowServices(true)}
+        subscriptionCount={subscriptions.length}
         headerExtra={(activePage === 'queue' || activePage === 'browse') ? queueChip : undefined}
       >
         {activePage === 'list'     && renderList()}
         {activePage === 'queue'    && renderQueue()}
         {activePage === 'browse'   && renderBrowse()}
         {activePage === 'activity' && renderActivity()}
-        {activePage === 'settings' && renderSettings()}
+        {activePage === 'profile'  && renderProfile()}
       </AppShell>
 
       {/* Global modals (page-independent) */}
