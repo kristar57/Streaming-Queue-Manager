@@ -739,7 +739,7 @@ export default function Home() {
         activityCount={recCount}
         profile={profile}
         onSignOut={signOut}
-        headerExtra={queueChip}
+        headerExtra={(activePage === 'queue' || activePage === 'browse') ? queueChip : undefined}
       >
         {activePage === 'list'     && renderList()}
         {activePage === 'queue'    && renderQueue()}
