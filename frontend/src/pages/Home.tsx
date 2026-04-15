@@ -739,6 +739,7 @@ export default function Home() {
         activityCount={recCount}
         profile={profile}
         onSignOut={signOut}
+        onInvite={(profile?.is_admin || profile?.can_invite) ? () => setShowInvite(true) : undefined}
         headerExtra={(activePage === 'queue' || activePage === 'browse') ? queueChip : undefined}
       >
         {activePage === 'list'     && renderList()}

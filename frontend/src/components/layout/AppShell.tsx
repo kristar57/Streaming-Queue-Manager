@@ -6,8 +6,9 @@ interface Props {
   activePage: NavPage
   onNavigate: (page: NavPage) => void
   activityCount: number
-  profile: { display_name: string; is_admin?: boolean } | null
+  profile: { display_name: string; is_admin?: boolean; can_invite?: boolean } | null
   onSignOut: () => void
+  onInvite?: () => void
   /** Rendered in the desktop topbar only (e.g. queue chip) */
   headerExtra?: React.ReactNode
   children: React.ReactNode
@@ -48,6 +49,7 @@ export function AppShell({
   activityCount,
   profile,
   onSignOut,
+  onInvite,
   headerExtra,
   children,
 }: Props) {
@@ -123,8 +125,41 @@ export function AppShell({
           {headerExtra}
         </header>
 
-        {/* Page content — on mobile, pad top for status bar and bottom for nav */}
-        <main className="flex-1 pt-safe pb-[72px] lg:pt-0 lg:pb-6">
+        {/* Mobile header */}
+        <header className="lg:hidden sticky top-0 z-30 bg-[var(--bg-card)]/90 backdrop-blur-md border-b border-white/10 flex-shrink-0" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+          <div className="flex items-center gap-2 px-4 h-12">
+            <Logo />
+            <div className="flex-1" />
+            {(profile?.is_admin || profile?.can_invite) && onInvite && (
+              <button
+                onClick={onInvite}
+                className="p-2 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
+                title="Invite someone"
+              >
+                ✉
+              </button>
+            )}
+            {profile?.is_admin && (
+              <Link
+                to="/admin"
+                className="p-2 text-[var(--text-secondary)] hover:text-white transition-colors"
+                title="Admin"
+              >
+                🛡
+              </Link>
+            )}
+            <button
+              onClick={onSignOut}
+              className="p-2 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer text-sm"
+              title="Sign out"
+            >
+              ↪
+            </button>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 pb-[72px] lg:pb-6">
           {children}
         </main>
 
