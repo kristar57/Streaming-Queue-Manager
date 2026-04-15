@@ -18,7 +18,7 @@ const NAV: { id: NavPage; icon: string; label: string }[] = [
   { id: 'list',     icon: '☰',  label: 'My List'  },
   { id: 'queue',    icon: '▤',  label: 'Queues'   },
   { id: 'browse',   icon: '⊞',  label: 'For You'  },
-  { id: 'activity', icon: '🔔', label: 'Activity' },
+  { id: 'activity', icon: '📥', label: 'Inbox'    },
   { id: 'settings', icon: '⚙',  label: 'Settings' },
 ]
 
@@ -26,7 +26,7 @@ const PAGE_LABELS: Record<NavPage, string> = {
   list:     'My List',
   queue:    'Shared Queues',
   browse:   'For You',
-  activity: 'Activity',
+  activity: 'Inbox',
   settings: 'Settings',
 }
 
@@ -127,7 +127,7 @@ export function AppShell({
 
         {/* Mobile header */}
         <header className="lg:hidden sticky top-0 z-30 bg-[var(--bg-card)]/90 backdrop-blur-md border-b border-white/10 flex-shrink-0" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-          <div className="flex items-center gap-2 px-4 h-12">
+          <div className="flex items-center gap-1 px-4 h-12">
             <Logo />
             <div className="flex-1" />
             {(profile?.is_admin || profile?.can_invite) && onInvite && (
@@ -149,11 +149,23 @@ export function AppShell({
               </Link>
             )}
             <button
+              onClick={() => onNavigate('activity')}
+              className={`relative p-2 transition-colors cursor-pointer ${activePage === 'activity' ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-white'}`}
+              title="Inbox"
+            >
+              🔔
+              {activityCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[14px] h-[14px] rounded-full bg-[var(--accent)] text-white text-[8px] font-bold flex items-center justify-center px-0.5">
+                  {activityCount}
+                </span>
+              )}
+            </button>
+            <button
               onClick={onSignOut}
-              className="p-2 text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer text-sm"
+              className="px-2 py-1.5 text-[11px] text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
               title="Sign out"
             >
-              ↪
+              Sign out
             </button>
           </div>
         </header>
@@ -181,11 +193,6 @@ export function AppShell({
                 )}
                 <span className="text-base leading-none">{item.icon}</span>
                 <span className="text-[9px] font-medium tracking-wide">{item.label}</span>
-                {item.id === 'activity' && activityCount > 0 && (
-                  <span className="absolute top-1 right-2 min-w-[13px] h-[13px] rounded-full bg-[var(--accent)] text-white text-[8px] font-bold flex items-center justify-center px-0.5">
-                    {activityCount}
-                  </span>
-                )}
               </button>
             ))}
           </div>
