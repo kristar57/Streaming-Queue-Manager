@@ -95,7 +95,7 @@ function SortableRow({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-1.5">
-            <button onClick={() => onViewDetail(entry)} className="text-sm font-medium text-white leading-snug flex-1 min-w-0 text-left hover:text-[var(--accent)] transition-colors cursor-pointer truncate">
+            <button onClick={() => onViewDetail(entry)} className="text-[15px] font-medium text-white leading-snug flex-1 min-w-0 text-left hover:text-[var(--accent)] transition-colors cursor-pointer truncate">
               {title.title}
             </button>
             {statusChip && (
@@ -104,7 +104,7 @@ function SortableRow({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1 mt-0.5 flex-wrap text-[11px] text-[var(--text-secondary)]">
+          <div className="flex items-center gap-1 mt-0.5 flex-wrap text-[13px] text-[var(--text-secondary)]">
             {year && <span>{year}</span>}
             {title.genres.slice(0, 2).map((g) => <span key={g}>· {g}</span>)}
             {runtime && <span>· {runtime}</span>}
