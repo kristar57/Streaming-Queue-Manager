@@ -95,7 +95,7 @@ function sortUpNext(entries: WatchlistEntryWithTitle[]): WatchlistEntryWithTitle
 // Component
 // ---------------------------------------------------------------
 export default function Home() {
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, signOut, refreshProfile } = useAuth()
   const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, rateEntry, deleteEntry, reorderEntriesToPositions, syncAllAvailability } = useWatchlist(user?.id)
   const { subscriptions, subscribedIds, toggleSubscription } = useSubscriptions(user?.id)
   const { queues } = useSharedQueues(user?.id)
@@ -150,10 +150,36 @@ export default function Home() {
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER_STATE)
   const [recCount, setRecCount] = useState(0)
 
+  // Profile editing state
+  const [profileName, setProfileName] = useState('')
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileMsg, setProfileMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  // Email change
+  const [newEmail, setNewEmail] = useState('')
+  const [emailChangeSending, setEmailChangeSending] = useState(false)
+  const [emailChangeSent, setEmailChangeSent] = useState(false)
+  const [emailChangeError, setEmailChangeError] = useState('')
+  // Password change
+  const [showPwForm, setShowPwForm] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordMsg, setPasswordMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  // Account deletion
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+
   // Clear badge when Activity page is opened
   useEffect(() => {
     if (activePage === 'activity') setRecCount(0)
   }, [activePage])
+
+  // Sync profile name field when profile loads
+  useEffect(() => {
+    if (profile?.display_name && !profileName) setProfileName(profile.display_name)
+  }, [profile?.display_name])
 
   // Auto-select the first shared queue when none is selected
   useEffect(() => {
@@ -652,18 +678,213 @@ export default function Home() {
     )
   }
 
-  // ── Page: Settings ────────────────────────────────────────────
+  // ── Page: Profile ─────────────────────────────────────────────
+  async function saveDisplayName() {
+    if (!user || !profileName.trim()) return
+    setProfileSaving(true)
+    setProfileMsg(null)
+    const { error } = await supabase.from('profiles').update({ display_name: profileName.trim() }).eq('id', user.id)
+    if (error) {
+      setProfileMsg({ ok: false, text: 'Failed to save — try again.' })
+    } else {
+      await refreshProfile()
+      setProfileMsg({ ok: true, text: 'Display name updated.' })
+    }
+    setProfileSaving(false)
+  }
+
+  async function handleEmailChange() {
+    const trimmed = newEmail.trim()
+    if (!trimmed || trimmed === user?.email) return
+    setEmailChangeError('')
+    setEmailChangeSending(true)
+    const { error } = await supabase.auth.updateUser(
+      { email: trimmed },
+      { emailRedirectTo: window.location.origin }
+    )
+    if (error) {
+      setEmailChangeError(error.message)
+    } else {
+      setEmailChangeSent(true)
+      setNewEmail('')
+    }
+    setEmailChangeSending(false)
+  }
+
+  async function changePassword() {
+    setPasswordMsg(null)
+    if (!currentPassword) {
+      setPasswordMsg({ ok: false, text: 'Enter your current password.' })
+      return
+    }
+    if (!newPassword || newPassword !== confirmPassword) {
+      setPasswordMsg({ ok: false, text: 'New passwords do not match.' })
+      return
+    }
+    if (newPassword.length < 8) {
+      setPasswordMsg({ ok: false, text: 'Password must be at least 8 characters.' })
+      return
+    }
+    setPasswordSaving(true)
+    // Verify current password
+    const { error: authError } = await supabase.auth.signInWithPassword({ email: user?.email ?? '', password: currentPassword })
+    if (authError) {
+      setPasswordMsg({ ok: false, text: 'Current password is incorrect.' })
+      setPasswordSaving(false)
+      return
+    }
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) {
+      setPasswordMsg({ ok: false, text: error.message })
+    } else {
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setShowPwForm(false)
+      setPasswordMsg({ ok: true, text: 'Password updated successfully.' })
+    }
+    setPasswordSaving(false)
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true)
+    setDeleteError('')
+    // Call the delete-account edge function
+    const { error } = await supabase.functions.invoke('delete-account')
+    if (error) {
+      setDeleteError(error.message ?? 'Failed to delete account. Please try again.')
+      setDeleting(false)
+      return
+    }
+    await supabase.auth.signOut()
+    window.location.href = '/'
+  }
+
   function renderProfile() {
     return (
-      <div className="max-w-sm mx-auto px-1 sm:px-4 py-6 space-y-4">
-        {/* Avatar + name */}
+      <div className="max-w-sm mx-auto px-1 sm:px-4 py-6 space-y-5">
+        {/* Avatar + name header */}
         <div className="flex items-center gap-4 px-1">
-          <div className="w-14 h-14 rounded-full bg-[var(--accent)]/20 border-2 border-[var(--accent)]/40 flex items-center justify-center text-2xl font-bold text-[var(--accent)]">
-            {profile?.display_name?.[0]?.toUpperCase() ?? '?'}
+          <div className="w-14 h-14 rounded-full bg-[var(--accent)]/20 border-2 border-[var(--accent)]/40 flex items-center justify-center text-2xl font-bold text-[var(--accent)] flex-shrink-0">
+            {profileName?.[0]?.toUpperCase() ?? '?'}
           </div>
           <div>
             <p className="text-base font-semibold text-white">{profile?.display_name}</p>
-            <p className="text-xs text-[var(--text-secondary)] mt-0.5">QueShare member</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5">{user?.email}</p>
+          </div>
+        </div>
+
+        {/* Profile */}
+        <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl overflow-hidden divide-y divide-white/10">
+          {/* Display name */}
+          <div className="px-4 py-3.5 space-y-2">
+            <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Display Name</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={profileName}
+                onChange={(e) => { setProfileName(e.target.value); setProfileMsg(null) }}
+                onKeyDown={(e) => e.key === 'Enter' && saveDisplayName()}
+                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                placeholder="Your name"
+              />
+              <button
+                onClick={saveDisplayName}
+                disabled={profileSaving || !profileName.trim() || profileName.trim() === profile?.display_name}
+                className="px-3 py-2 rounded-lg text-sm font-medium bg-[var(--accent)] text-white disabled:opacity-40 hover:bg-[var(--accent-hover)] transition-colors cursor-pointer"
+              >
+                {profileSaving ? '…' : 'Save'}
+              </button>
+            </div>
+            {profileMsg && (
+              <p className={`text-xs ${profileMsg.ok ? 'text-green-400' : 'text-red-400'}`}>{profileMsg.text}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Account */}
+        <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl overflow-hidden divide-y divide-white/10">
+          {/* Email change */}
+          <div className="px-4 py-3.5 space-y-2">
+            <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Email Address</p>
+            <p className="text-sm text-white">{user?.email}</p>
+            {emailChangeSent ? (
+              <p className="text-xs text-green-400">Confirmation sent — check your new inbox and click the link to confirm.</p>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => { setNewEmail(e.target.value); setEmailChangeError('') }}
+                    placeholder="New email address"
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                  />
+                  <button
+                    onClick={handleEmailChange}
+                    disabled={emailChangeSending || !newEmail.trim() || newEmail.trim() === user?.email}
+                    className="px-3 py-2 rounded-lg text-sm font-medium bg-white/5 border border-white/10 text-[var(--text-secondary)] hover:text-white disabled:opacity-40 transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    {emailChangeSending ? '…' : 'Change'}
+                  </button>
+                </div>
+                {emailChangeError && <p className="text-xs text-red-400">{emailChangeError}</p>}
+                <p className="text-xs text-[var(--text-secondary)] opacity-60">A confirmation link will be sent to the new address before it takes effect.</p>
+              </>
+            )}
+          </div>
+
+          {/* Password change */}
+          <div className="px-4 py-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Password</p>
+              {passwordMsg?.ok ? (
+                <span className="text-xs text-green-400">Updated</span>
+              ) : (
+                <button
+                  onClick={() => { setShowPwForm((v) => !v); setPasswordMsg(null) }}
+                  className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
+                >
+                  {showPwForm ? 'Cancel' : 'Change password'}
+                </button>
+              )}
+            </div>
+            {showPwForm && (
+              <div className="space-y-2 pt-1">
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => { setCurrentPassword(e.target.value); setPasswordMsg(null) }}
+                  placeholder="Current password"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                />
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => { setNewPassword(e.target.value); setPasswordMsg(null) }}
+                  placeholder="New password (min 8 characters)"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordMsg(null) }}
+                  onKeyDown={(e) => e.key === 'Enter' && changePassword()}
+                  placeholder="Confirm new password"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                />
+                {passwordMsg && (
+                  <p className={`text-xs ${passwordMsg.ok ? 'text-green-400' : 'text-red-400'}`}>{passwordMsg.text}</p>
+                )}
+                <button
+                  onClick={changePassword}
+                  disabled={passwordSaving || !currentPassword || !newPassword || !confirmPassword}
+                  className="w-full py-2 rounded-lg text-sm font-medium bg-[var(--accent)] text-white disabled:opacity-40 hover:bg-[var(--accent-hover)] transition-colors cursor-pointer"
+                >
+                  {passwordSaving ? 'Updating…' : 'Update Password'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -673,9 +894,48 @@ export default function Home() {
             onClick={signOut}
             className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-red-400 hover:bg-white/5 transition-colors cursor-pointer text-left"
           >
-            <span className="text-base">↪</span>
+            <span>↪</span>
             <span>Log out</span>
           </button>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="bg-[var(--bg-card)] border border-red-900/30 rounded-xl overflow-hidden">
+          <div className="px-4 py-3.5 space-y-3">
+            <p className="text-xs font-semibold text-red-400 uppercase tracking-wider">Danger Zone</p>
+            {!confirmDelete ? (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-400 bg-red-900/10 hover:bg-red-900/20 border border-red-900/30 transition-colors cursor-pointer"
+              >
+                Delete my account
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <div className="bg-red-900/15 border border-red-900/30 rounded-lg p-3">
+                  <p className="text-sm font-semibold text-red-400 mb-1">Are you absolutely sure?</p>
+                  <p className="text-xs text-[var(--text-secondary)]">This will permanently delete your account and all your data. There is no recovery.</p>
+                </div>
+                {deleteError && <p className="text-xs text-red-400">{deleteError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleting}
+                    className="flex-1 py-2 rounded-lg text-sm font-semibold text-white bg-red-700 hover:bg-red-600 disabled:opacity-50 transition-colors cursor-pointer"
+                  >
+                    {deleting ? 'Deleting…' : 'Yes, delete my account'}
+                  </button>
+                  <button
+                    onClick={() => { setConfirmDelete(false); setDeleteError('') }}
+                    disabled={deleting}
+                    className="px-4 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:text-white bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <PolicyFooter />

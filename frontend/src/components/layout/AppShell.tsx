@@ -66,7 +66,7 @@ export function AppShell({
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 flex flex-col gap-0.5 p-2 pt-3 overflow-y-auto">
+        <nav className="flex-1 flex flex-col gap-0.5 p-2 pt-3">
           {NAV_CORE.map((item) => (
             <div key={item.id} className="relative group">
               <button
@@ -142,7 +142,7 @@ export function AppShell({
           )}
           <button
             onClick={() => onNavigate('profile')}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group"
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
           >
             <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-xs font-semibold flex-shrink-0 transition-colors ${
               activePage === 'profile'
@@ -151,15 +151,14 @@ export function AppShell({
             }`}>
               {initial}
             </div>
-            <div className="flex-1 min-w-0 text-left">
-              <div className="text-xs font-medium text-white truncate">{profile?.display_name}</div>
-              <button
-                onClick={(e) => { e.stopPropagation(); onSignOut() }}
-                className="text-[10px] text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
-              >
-                Log out
-              </button>
-            </div>
+            <div className="text-xs font-medium text-white truncate">{profile?.display_name}</div>
+          </button>
+          <button
+            onClick={onSignOut}
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[11px] text-[var(--text-secondary)] hover:text-red-400 hover:bg-white/5 transition-colors cursor-pointer"
+          >
+            <span className="w-5 text-center leading-none">↪</span>
+            <span>Log out</span>
           </button>
         </div>
       </aside>
