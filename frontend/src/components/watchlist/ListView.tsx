@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { EntryRow } from './EntryRow'
 import type { WatchlistEntryWithTitle, EntryStatus, StreamingAvailability } from '../../types'
 import type { TitleQueueRef } from '../../hooks/useSharedQueues'
@@ -21,38 +22,55 @@ interface ListViewProps {
 }
 
 export function ListView({ groups, availability, subscribedIds, titleQueueMap, currentUserId, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onAddToQueue, onRate, onDelete, onViewDetail }: ListViewProps) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
+
+  function toggle(label: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(label)) next.delete(label)
+      else next.add(label)
+      return next
+    })
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {groups.map((group) =>
         group.entries.length === 0 ? null : (
           <section key={group.label}>
-            <h2 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider px-3 mb-1">
+            <button
+              onClick={() => toggle(group.label)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider px-3 mb-1 hover:text-white transition-colors cursor-pointer w-full text-left"
+            >
+              <span className="text-[10px] opacity-60">{collapsed.has(group.label) ? '▶' : '▼'}</span>
               {group.label} ({group.entries.length})
-            </h2>
-            <div className="bg-[var(--bg-card)] rounded-xl border border-white/10 divide-y divide-white/5 overflow-hidden">
-              {group.entries.map((entry, idx) => (
-                <EntryRow
-                  key={entry.id}
-                  entry={entry}
-                  providers={availability[entry.title_id] ?? []}
-                  subscribedIds={subscribedIds}
-                  sharedQueues={titleQueueMap?.[entry.title_id]}
-                  currentUserId={currentUserId}
-                  canMoveUp={group.isUpNext && idx > 0}
-                  canMoveDown={group.isUpNext && idx < group.entries.length - 1}
-                  onStatusChange={onStatusChange}
-                  onPriorityCycle={onPriorityCycle}
-                  onCaughtUpToggle={onCaughtUpToggle}
-                  onEdit={onEdit}
-                  onReorder={group.isUpNext ? onReorder : undefined}
-                  onRecommend={onRecommend}
-                  onAddToQueue={onAddToQueue}
-                  onRate={onRate}
-                  onDelete={onDelete}
-                  onViewDetail={onViewDetail}
-                />
-              ))}
-            </div>
+            </button>
+            {!collapsed.has(group.label) && (
+              <div className="bg-[var(--bg-card)] rounded-xl border border-white/10 divide-y divide-white/5 overflow-hidden">
+                {group.entries.map((entry, idx) => (
+                  <EntryRow
+                    key={entry.id}
+                    entry={entry}
+                    providers={availability[entry.title_id] ?? []}
+                    subscribedIds={subscribedIds}
+                    sharedQueues={titleQueueMap?.[entry.title_id]}
+                    currentUserId={currentUserId}
+                    canMoveUp={group.isUpNext && idx > 0}
+                    canMoveDown={group.isUpNext && idx < group.entries.length - 1}
+                    onStatusChange={onStatusChange}
+                    onPriorityCycle={onPriorityCycle}
+                    onCaughtUpToggle={onCaughtUpToggle}
+                    onEdit={onEdit}
+                    onReorder={group.isUpNext ? onReorder : undefined}
+                    onRecommend={onRecommend}
+                    onAddToQueue={onAddToQueue}
+                    onRate={onRate}
+                    onDelete={onDelete}
+                    onViewDetail={onViewDetail}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         )
       )}

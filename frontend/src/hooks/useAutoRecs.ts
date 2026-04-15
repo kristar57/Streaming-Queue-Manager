@@ -28,6 +28,12 @@ export function usePersonalRecs(
   const [recs, setRecs] = useState<TMDBSearchResult[]>([])
   const [loading, setLoading] = useState(false)
 
+  // Fingerprint of all current ratings — changes whenever the user rates something
+  const ratingsSig = entries
+    .filter((e) => e.user_rating !== null)
+    .map((e) => `${e.id}:${e.user_rating}`)
+    .join(',')
+
   useEffect(() => {
     if (!userId || !enabled || entries.length === 0) { setRecs([]); return }
 
@@ -77,7 +83,9 @@ export function usePersonalRecs(
       sessionStorage.setItem(cacheKey, JSON.stringify(sorted))
       setLoading(false)
     })()
-  }, [userId, enabled]) // re-runs only on user/toggle change; rating changes bust cache explicitly
+  // ratingsSig changes whenever any rating changes, causing the effect to re-run
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, enabled, ratingsSig])
 
   return { recs, loading }
 }
@@ -113,7 +121,7 @@ export function useGroupRecs(
       let score = 0
       let blacklisted = false
       for (const m of qt.member_entries) {
-        const r = m.entry?.user_rating ?? null
+        const r = m.queue_rating ?? null
         const status = m.entry?.status ?? null
         if (r === -1) { blacklisted = true; break }
         if (r === 3) score += 4

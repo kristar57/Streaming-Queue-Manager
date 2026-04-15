@@ -177,26 +177,38 @@ export function useQueueDetail(queueId: string | null) {
     const titleIds = rawTitles.map((qt) => qt.title_id)
     const memberIds = memberList.map((m) => m.user_id)
     const entryIndex = new Map<string, WatchlistEntryWithTitle>()
+    const queueRatingIndex = new Map<string, -1 | 1 | 2 | 3>()
 
     if (titleIds.length > 0 && memberIds.length > 0) {
-      const { data: entryData } = await supabase
-        .from('watchlist_entries')
-        .select('*, title:titles(*), profile:profiles(id, display_name)')
-        .in('user_id', memberIds)
-        .in('title_id', titleIds)
+      const [{ data: entryData }, { data: ratingData }] = await Promise.all([
+        supabase
+          .from('watchlist_entries')
+          .select('*, title:titles(*), profile:profiles(id, display_name)')
+          .in('user_id', memberIds)
+          .in('title_id', titleIds),
+        supabase
+          .from('queue_title_ratings')
+          .select('user_id, title_id, rating')
+          .eq('queue_id', queueId)
+          .in('title_id', titleIds),
+      ])
 
       for (const e of (entryData ?? []) as WatchlistEntryWithTitle[]) {
         entryIndex.set(`${e.user_id}:${e.title_id}`, e)
       }
+      for (const r of (ratingData ?? []) as { user_id: string; title_id: string; rating: -1 | 1 | 2 | 3 }[]) {
+        queueRatingIndex.set(`${r.user_id}:${r.title_id}`, r.rating)
+      }
     }
 
-    // Attach each member's entry to each title
+    // Attach each member's entry and queue rating to each title
     const enriched: QueueTitleWithMemberEntries[] = rawTitles.map((qt) => ({
       ...qt,
       member_entries: memberList.map((m) => ({
         user_id: m.user_id,
         display_name: m.profile?.display_name ?? m.user_id,
         entry: entryIndex.get(`${m.user_id}:${qt.title_id}`) ?? null,
+        queue_rating: queueRatingIndex.get(`${m.user_id}:${qt.title_id}`) ?? null,
       })),
     }))
 
@@ -212,6 +224,7 @@ export function useQueueDetail(queueId: string | null) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'queue_titles' }, fetchDetail)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'queue_members' }, fetchDetail)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'watchlist_entries' }, fetchDetail)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'queue_title_ratings' }, fetchDetail)
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }

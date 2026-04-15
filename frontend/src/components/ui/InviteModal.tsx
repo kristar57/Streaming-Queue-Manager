@@ -7,7 +7,7 @@ interface InviteModalProps {
   onClose: () => void
 }
 
-const APP_URL = window.location.origin
+const APP_URL = import.meta.env.VITE_APP_URL ?? window.location.origin
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -71,8 +71,8 @@ export function InviteModal({ inviterName, inviterId, onClose }: InviteModalProp
       const { data, error: fnErr } = await supabase.functions.invoke('send-invite', {
         body: { to_email: draft.toEmail, code: draft.code, subject: draft.subject, body: draft.body },
       })
-      if (fnErr) throw fnErr
-      if (data?.error) throw new Error(data.error)
+      if (fnErr) throw new Error(fnErr.message ?? 'Edge function error')
+      if (!data?.ok) throw new Error(data?.error ?? 'Unknown error from send-invite')
       setStep('sent')
     } catch (err) {
       setError((err as { message?: string })?.message ?? 'Failed to send email')

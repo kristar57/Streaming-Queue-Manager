@@ -49,7 +49,7 @@ QueShare is made up of several separate services that work together. Here's what
 **What it does:** Resend is the service that sends invite emails on behalf of QueShare.
 
 - **Current use:** Sending registration invite codes to new members
-- **Sending address:** `invites@queshare.com` (once DNS and domain verification are configured in Resend)
+- **Sending address:** `queshareinvite@prexpose.com` (shared with the PreXpose app — prexpose.com is the verified Resend domain)
 - **API key:** Stored as a Supabase Edge Function secret (`RESEND_API_KEY`)
 - **Dashboard:** https://resend.com
 

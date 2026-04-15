@@ -213,6 +213,7 @@ export interface QueueTitleWithMemberEntries extends QueueTitle {
     user_id: string
     display_name: string
     entry: WatchlistEntryWithTitle | null
+    queue_rating: -1 | 1 | 2 | 3 | null
   }>
 }
 

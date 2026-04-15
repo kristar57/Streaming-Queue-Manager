@@ -10,12 +10,16 @@ function RecShelf({
   recs,
   loading,
   emptyText,
+  dismissedIds,
   onSelect,
+  onDismiss,
 }: {
   recs: TMDBSearchResult[]
   loading: boolean
   emptyText: string
+  dismissedIds?: Set<number>
   onSelect: (r: TMDBSearchResult) => void
+  onDismiss?: (tmdbId: number) => void
 }) {
   if (loading) {
     return (
@@ -30,48 +34,68 @@ function RecShelf({
     )
   }
 
-  if (recs.length === 0) {
+  const visible = dismissedIds ? recs.filter((r) => !dismissedIds.has(r.id)) : recs
+
+  if (visible.length === 0) {
     return <p className="text-xs text-[var(--text-secondary)] py-2 px-1">{emptyText}</p>
   }
 
   return (
     <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
-      {recs.map((r) => (
-        <button
-          key={r.id}
-          onClick={() => onSelect(r)}
-          className="flex-shrink-0 w-[88px] text-left group cursor-pointer"
-        >
-          {r.poster_path ? (
-            <img
-              src={thumbnailUrl(r.poster_path)}
-              alt=""
-              className="w-full aspect-[2/3] object-cover rounded-lg group-hover:opacity-80 transition-opacity"
-            />
-          ) : (
-            <div className="w-full aspect-[2/3] bg-white/10 rounded-lg flex items-center justify-center text-white/20 text-xl">?</div>
+      {visible.map((r) => (
+        <div key={r.id} className="flex-shrink-0 w-[88px] relative group">
+          <button
+            onClick={() => onSelect(r)}
+            className="w-full text-left cursor-pointer"
+          >
+            {r.poster_path ? (
+              <img
+                src={thumbnailUrl(r.poster_path)}
+                alt=""
+                className="w-full aspect-[2/3] object-cover rounded-lg group-hover:opacity-80 transition-opacity"
+              />
+            ) : (
+              <div className="w-full aspect-[2/3] bg-white/10 rounded-lg flex items-center justify-center text-white/20 text-xl">?</div>
+            )}
+            <p className="text-[11px] text-white mt-1 line-clamp-2 leading-tight">{r.title ?? r.name}</p>
+            {(r.vote_average ?? 0) > 0 && (
+              <p className="text-[10px] text-yellow-400">★ {r.vote_average.toFixed(1)}</p>
+            )}
+          </button>
+
+          {/* Dismiss button */}
+          {onDismiss && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDismiss(r.id) }}
+              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white/70 hover:text-white hover:bg-black/90 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+              title="Not interested"
+            >
+              ✕
+            </button>
           )}
-          <p className="text-[11px] text-white mt-1 line-clamp-2 leading-tight">{r.title ?? r.name}</p>
-          {(r.vote_average ?? 0) > 0 && (
-            <p className="text-[10px] text-yellow-400">★ {r.vote_average.toFixed(1)}</p>
-          )}
-        </button>
+        </div>
       ))}
     </div>
   )
 }
 
-// Shelf from partner's rated entries (no TMDB call needed)
+// Shelf from partner's rated entries
 function PartnerShelf({
   entries,
   myTitleIds,
+  dismissedIds,
   onSelect,
+  onDismiss,
 }: {
   entries: WatchlistEntryWithTitle[]
   myTitleIds: Set<string>
+  dismissedIds?: Set<number>
   onSelect: (r: TMDBSearchResult) => void
+  onDismiss?: (tmdbId: number) => void
 }) {
-  const visible = entries.filter((e) => !myTitleIds.has(e.title_id))
+  const visible = entries.filter(
+    (e) => !myTitleIds.has(e.title_id) && !(dismissedIds?.has(e.title.tmdb_id))
+  )
   if (visible.length === 0) return null
 
   return (
@@ -90,28 +114,36 @@ function PartnerShelf({
           vote_average: e.title.tmdb_rating ?? 0,
         }
         return (
-          <button
-            key={e.id}
-            onClick={() => onSelect(fakeResult)}
-            className="flex-shrink-0 w-[88px] text-left group cursor-pointer"
-          >
-            {e.title.poster_path ? (
-              <img
-                src={thumbnailUrl(e.title.poster_path)}
-                alt=""
-                className="w-full aspect-[2/3] object-cover rounded-lg group-hover:opacity-80 transition-opacity"
-              />
-            ) : (
-              <div className="w-full aspect-[2/3] bg-white/10 rounded-lg flex items-center justify-center text-white/20 text-xl">?</div>
+          <div key={e.id} className="flex-shrink-0 w-[88px] relative group">
+            <button
+              onClick={() => onSelect(fakeResult)}
+              className="w-full text-left cursor-pointer"
+            >
+              {e.title.poster_path ? (
+                <img
+                  src={thumbnailUrl(e.title.poster_path)}
+                  alt=""
+                  className="w-full aspect-[2/3] object-cover rounded-lg group-hover:opacity-80 transition-opacity"
+                />
+              ) : (
+                <div className="w-full aspect-[2/3] bg-white/10 rounded-lg flex items-center justify-center text-white/20 text-xl">?</div>
+              )}
+              <p className="text-[11px] text-white mt-1 line-clamp-2 leading-tight">{e.title.title}</p>
+              {(e.title.tmdb_rating ?? 0) > 0 && (
+                <p className="text-[10px] text-yellow-400">★ {e.title.tmdb_rating!.toFixed(1)}</p>
+              )}
+            </button>
+
+            {onDismiss && (
+              <button
+                onClick={(ev) => { ev.stopPropagation(); onDismiss(e.title.tmdb_id) }}
+                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white/70 hover:text-white hover:bg-black/90 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                title="Not interested"
+              >
+                ✕
+              </button>
             )}
-            <p className="text-[11px] text-white mt-1 line-clamp-2 leading-tight">{e.title.title}</p>
-            {(e.title.tmdb_rating ?? 0) > 0 && (
-              <p className="text-[10px] text-yellow-400">★ {e.title.tmdb_rating!.toFixed(1)}</p>
-            )}
-            {e.user_rating === 2 && (
-              <p className="text-[10px] text-yellow-400">Loved</p>
-            )}
-          </button>
+          </div>
         )
       })}
     </div>
@@ -127,8 +159,10 @@ interface PersonalRecsPanelProps {
   partnerRecs: PartnerRec[]
   myEntries: WatchlistEntryWithTitle[]
   recsEnabled: boolean
+  dismissedIds?: Set<number>
   onToggleEnabled: (v: boolean) => void
   onSelect: (r: TMDBSearchResult) => void
+  onDismiss?: (tmdbId: number) => void
 }
 
 export function PersonalRecsPanel({
@@ -137,17 +171,18 @@ export function PersonalRecsPanel({
   partnerRecs,
   myEntries,
   recsEnabled,
+  dismissedIds,
   onToggleEnabled,
   onSelect,
+  onDismiss,
 }: PersonalRecsPanelProps) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   const myTitleIds = new Set(myEntries.map((e) => e.title_id))
   const hasPartnerRecs = partnerRecs.some((p) => p.entries.some((e) => !myTitleIds.has(e.title_id)))
   const hasAnyRecs = personalRecs.length > 0 || hasPartnerRecs
 
   return (
     <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl overflow-hidden">
-      {/* Header */}
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer"
@@ -166,7 +201,6 @@ export function PersonalRecsPanel({
 
       {open && (
         <div className="px-4 pb-4 space-y-4 border-t border-white/5">
-          {/* Opt-in toggle */}
           <label className="flex items-center gap-2 pt-3 cursor-pointer select-none">
             <input
               type="checkbox"
@@ -179,18 +213,18 @@ export function PersonalRecsPanel({
 
           {recsEnabled && (
             <>
-              {/* For You */}
               <div className="space-y-2">
                 <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">For you</p>
                 <RecShelf
                   recs={personalRecs}
                   loading={personalLoading}
-                  emptyText="Rate some titles (Good or Loved) to get personalised suggestions."
+                  emptyText="Rate some titles (👍 or higher) to get personalised suggestions."
+                  dismissedIds={dismissedIds}
                   onSelect={onSelect}
+                  onDismiss={onDismiss}
                 />
               </div>
 
-              {/* From partners */}
               {hasPartnerRecs && partnerRecs.map((p) => {
                 const visible = p.entries.filter((e) => !myTitleIds.has(e.title_id))
                 if (visible.length === 0) return null
@@ -199,14 +233,20 @@ export function PersonalRecsPanel({
                     <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
                       Liked by {p.partnerName}
                     </p>
-                    <PartnerShelf entries={p.entries} myTitleIds={myTitleIds} onSelect={onSelect} />
+                    <PartnerShelf
+                      entries={p.entries}
+                      myTitleIds={myTitleIds}
+                      dismissedIds={dismissedIds}
+                      onSelect={onSelect}
+                      onDismiss={onDismiss}
+                    />
                   </div>
                 )
               })}
 
               {!personalLoading && !hasAnyRecs && (
                 <p className="text-xs text-[var(--text-secondary)] py-1">
-                  Rate titles as Good or Loved to start seeing recommendations.
+                  Rate titles as 👍 or higher to start seeing recommendations.
                 </p>
               )}
             </>
@@ -218,18 +258,21 @@ export function PersonalRecsPanel({
 }
 
 // ---------------------------------------------------------------
-// Group recommendations panel (for shared queue view)
+// Group recommendations panel (for shared queue)
 // ---------------------------------------------------------------
 interface GroupRecsPanelProps {
   recs: TMDBSearchResult[]
   loading: boolean
+  queueName?: string
+  dismissedIds?: Set<number>
   onSelect: (r: TMDBSearchResult) => void
+  onDismiss?: (tmdbId: number) => void
 }
 
-export function GroupRecsPanel({ recs, loading, onSelect }: GroupRecsPanelProps) {
-  const [open, setOpen] = useState(false)
+export function GroupRecsPanel({ recs, loading, queueName, dismissedIds, onSelect, onDismiss }: GroupRecsPanelProps) {
+  const [open, setOpen] = useState(true)
 
-  if (!loading && recs.length === 0) return null
+  const visible = dismissedIds ? recs.filter((r) => !dismissedIds.has(r.id)) : recs
 
   return (
     <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl overflow-hidden">
@@ -238,10 +281,15 @@ export function GroupRecsPanel({ recs, loading, onSelect }: GroupRecsPanelProps)
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer"
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-white">Suggested for the queue</span>
+          <span className="text-sm font-semibold text-white">Suggested for {queueName ?? 'the queue'}</span>
           {loading && <span className="text-[10px] text-[var(--text-secondary)]">Loading…</span>}
-          {!loading && recs.length > 0 && (
-            <span className="text-[10px] text-[var(--accent)] border border-[var(--accent)]/30 rounded-full px-1.5 py-0.5">{recs.length}</span>
+          {!loading && visible.length > 0 && (
+            <span className="text-[10px] text-[var(--accent)] border border-[var(--accent)]/30 rounded-full px-1.5 py-0.5">
+              {visible.length}
+            </span>
+          )}
+          {!loading && visible.length === 0 && (
+            <span className="text-[10px] text-[var(--text-secondary)]">Rate titles in this queue to unlock</span>
           )}
         </div>
         <span className="text-xs text-[var(--text-secondary)]">{open ? '▲' : '▼'}</span>
@@ -253,7 +301,9 @@ export function GroupRecsPanel({ recs, loading, onSelect }: GroupRecsPanelProps)
             recs={recs}
             loading={loading}
             emptyText="Rate titles in this queue to get group suggestions."
+            dismissedIds={dismissedIds}
             onSelect={onSelect}
+            onDismiss={onDismiss}
           />
         </div>
       )}

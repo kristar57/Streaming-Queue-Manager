@@ -11,6 +11,9 @@
     "start": "sirv dist --port 8080 --single --host"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@supabase/supabase-js": "^2.103.0",
     "lucide-react": "^1.8.0",
     "react": "^19.2.4",
@@ -23,6 +26,7 @@
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vite-pwa/assets-generator": "^1.0.2",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
@@ -32,6 +36,7 @@
     "tailwindcss": "^4.2.2",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.0",
-    "vite": "^8.0.4"
+    "vite": "^8.0.4",
+    "vite-plugin-pwa": "^1.2.0"
   }
 }

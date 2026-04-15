@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { ThumbsUp, ThumbsDown } from 'lucide-react'
 
 type Rating = -1 | 1 | 2 | 3 | null
 
@@ -8,18 +9,50 @@ interface RatingWidgetProps {
   compact?: boolean
 }
 
-const OPTIONS: { value: -1 | 1 | 2 | 3; label: string; title: string; pillClass: string }[] = [
-  { value: -1, label: '👎', title: 'Not for me',     pillClass: 'bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30' },
-  { value: 1,  label: '👍', title: 'Liked it',       pillClass: 'bg-blue-500/20 border-blue-500/40 text-blue-400 hover:bg-blue-500/30' },
-  { value: 2,  label: '👍👍', title: 'Really liked it', pillClass: 'bg-green-500/20 border-green-500/40 text-green-400 hover:bg-green-500/30' },
-  { value: 3,  label: '👍👍👍', title: 'Loved it',    pillClass: 'bg-yellow-500/20 border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/30' },
+const SZ = 13
+
+const OPTIONS: {
+  value: -1 | 1 | 2 | 3
+  title: string
+  activeClass: string
+  inactiveClass: string
+  icon: React.ReactNode
+}[] = [
+  {
+    value: -1,
+    title: 'Not for me',
+    activeClass:   'bg-red-500/20 border-red-500/40 text-red-400',
+    inactiveClass: 'bg-white/5 border-white/10 text-[var(--text-secondary)] hover:text-red-400 hover:border-red-500/30',
+    icon: <ThumbsDown size={SZ} />,
+  },
+  {
+    value: 1,
+    title: 'Liked it',
+    activeClass:   'bg-blue-500/20 border-blue-500/40 text-blue-400',
+    inactiveClass: 'bg-white/5 border-white/10 text-[var(--text-secondary)] hover:text-blue-400 hover:border-blue-500/30',
+    icon: <ThumbsUp size={SZ} />,
+  },
+  {
+    value: 2,
+    title: 'Really liked it',
+    activeClass:   'bg-green-500/20 border-green-500/40 text-green-400',
+    inactiveClass: 'bg-white/5 border-white/10 text-[var(--text-secondary)] hover:text-green-400 hover:border-green-500/30',
+    icon: <span className="flex"><ThumbsUp size={SZ} /><ThumbsUp size={SZ} /></span>,
+  },
+  {
+    value: 3,
+    title: 'Loved it',
+    activeClass:   'bg-yellow-500/20 border-yellow-500/40 text-yellow-400',
+    inactiveClass: 'bg-white/5 border-white/10 text-[var(--text-secondary)] hover:text-yellow-400 hover:border-yellow-500/30',
+    icon: <span className="flex"><ThumbsUp size={SZ} /><ThumbsUp size={SZ} /><ThumbsUp size={SZ} /></span>,
+  },
 ]
 
-// Collapsed button shown when not expanded
 function ratingIcon(rating: Rating) {
-  if (rating === null) return <span className="text-[var(--text-secondary)] text-base leading-none">☆</span>
+  if (rating === null) return <ThumbsUp size={14} className="text-[var(--text-secondary)] opacity-40" />
   const o = OPTIONS.find((x) => x.value === rating)!
-  return <span className="text-sm leading-none">{o.label}</span>
+  const cls = rating === -1 ? 'text-red-400' : rating === 1 ? 'text-blue-400' : rating === 2 ? 'text-green-400' : 'text-yellow-400'
+  return <span className={`flex items-center ${cls}`}>{o.icon}</span>
 }
 
 // Tap-to-expand inline rating for list rows
@@ -27,7 +60,6 @@ function InlineRatingWidget({ rating, onChange }: { rating: Rating; onChange: (r
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  // Close when clicking outside
   useEffect(() => {
     if (!open) return
     function handleClick(e: MouseEvent) {
@@ -52,11 +84,13 @@ function InlineRatingWidget({ rating, onChange }: { rating: Rating; onChange: (r
               type="button"
               onClick={() => handleSelect(o.value)}
               title={o.title}
-              className={`px-1.5 py-1 rounded-lg text-xs border transition-colors cursor-pointer ${o.pillClass} ${
-                rating === o.value ? 'ring-1 ring-white/30' : ''
+              className={`px-1.5 py-1 rounded-lg border transition-colors cursor-pointer flex items-center ${
+                rating === o.value
+                  ? o.activeClass + ' ring-1 ring-white/20'
+                  : o.inactiveClass
               }`}
             >
-              {o.label}
+              {o.icon}
             </button>
           ))}
         </div>
@@ -64,8 +98,8 @@ function InlineRatingWidget({ rating, onChange }: { rating: Rating; onChange: (r
         <button
           type="button"
           onClick={() => setOpen(true)}
-          title={rating !== null ? `Rating: ${OPTIONS.find(o => o.value === rating)?.title} — tap to change` : 'Rate this'}
-          className="p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+          title={rating !== null ? `${OPTIONS.find(o => o.value === rating)?.title} — tap to change` : 'Rate this'}
+          className="p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer flex items-center"
         >
           {ratingIcon(rating)}
         </button>
@@ -86,13 +120,13 @@ export function RatingWidget({ rating, onChange, compact = false }: RatingWidget
           type="button"
           onClick={() => onChange(rating === o.value ? null : o.value)}
           title={rating === o.value ? `Clear rating (${o.title})` : o.title}
-          className={`flex-1 py-1.5 rounded-lg text-sm border transition-colors cursor-pointer ${
+          className={`flex-1 py-1.5 rounded-lg border transition-colors cursor-pointer flex items-center justify-center gap-1 ${
             rating === o.value
-              ? o.pillClass + ' ring-1 ring-white/20'
-              : 'bg-white/5 border-white/10 text-[var(--text-secondary)] hover:text-white'
+              ? o.activeClass + ' ring-1 ring-white/20'
+              : o.inactiveClass
           }`}
         >
-          {o.label}
+          {o.icon}
         </button>
       ))}
     </div>

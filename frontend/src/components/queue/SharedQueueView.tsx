@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { thumbnailUrl } from '../../lib/tmdb'
 import { getTitleStatusChip, formatRuntime, releaseYear } from '../../lib/titleUtils'
 import { ShelfDecisionPanel } from './ShelfDecisionPanel'
+import { RatingWidget } from '../ui/RatingWidget'
 import type { QueueTitleWithMemberEntries, StreamingAvailability, Title } from '../../types'
 
 function isUpcomingByTmdb(title: Title): boolean {
@@ -38,6 +39,7 @@ interface SharedQueueViewProps {
   onMyStatusChange: (entryId: string, status: 'want_to_watch' | 'watching' | 'watched') => void
   onEdit: (entry: import('../../types').WatchlistEntryWithTitle) => void
   onViewDetail: (entry: import('../../types').WatchlistEntryWithTitle) => void
+  onQueueRate: (titleId: string, rating: -1 | 1 | 2 | 3 | null) => void
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
@@ -81,18 +83,21 @@ interface QueueRowProps {
   onMyStatusChange: (entryId: string, status: 'want_to_watch' | 'watching' | 'watched') => void
   onEdit: (entry: import('../../types').WatchlistEntryWithTitle) => void
   onViewDetail: (entry: import('../../types').WatchlistEntryWithTitle) => void
+  onQueueRate: (titleId: string, rating: -1 | 1 | 2 | 3 | null) => void
 }
 
 function QueueRow({
   qt, canMoveUp, canMoveDown, currentUserId, availability,
-  onReorder, onApprove, onShelf, onRemove, onMyStatusChange, onEdit, onViewDetail,
+  onReorder, onApprove, onShelf, onRemove, onMyStatusChange, onEdit, onViewDetail, onQueueRate,
 }: QueueRowProps) {
   const { title } = qt
   const [expanded, setExpanded] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [showShelfPanel, setShowShelfPanel] = useState(false)
 
-  const myEntry = qt.member_entries.find((m) => m.user_id === currentUserId)?.entry ?? null
+  const myMemberEntry = qt.member_entries.find((m) => m.user_id === currentUserId)
+  const myEntry = myMemberEntry?.entry ?? null
+  const myQueueRating = myMemberEntry?.queue_rating ?? null
   const others  = qt.member_entries.filter((m) => m.user_id !== currentUserId)
 
   const proposerName = qt.added_by_profile?.display_name ?? 'Someone'
@@ -267,15 +272,22 @@ function QueueRow({
             )}
           </div>
 
-          {/* Expand toggle — only for proposed and active items */}
+          {/* Rating widget + expand toggle */}
           {!isShelved && (
-            <button
-              onClick={() => setExpanded((v) => !v)}
-              className="self-center flex-shrink-0 text-[var(--text-secondary)] hover:text-white transition-colors p-1 cursor-pointer"
-              title="Actions"
-            >
-              <span className="text-xs">{expanded ? '▲' : '⋯'}</span>
-            </button>
+            <div className="flex flex-col items-center gap-1 flex-shrink-0 self-center">
+              <RatingWidget
+                rating={myQueueRating}
+                onChange={(r) => onQueueRate(qt.title_id, r)}
+                compact
+              />
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                className="text-[var(--text-secondary)] hover:text-white transition-colors p-1 cursor-pointer"
+                title="Actions"
+              >
+                <span className="text-xs">{expanded ? '▲' : '⋯'}</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -364,7 +376,7 @@ function QueueRow({
 
 export function SharedQueueView({
   titles, availability, currentUserId,
-  onReorder, onApprove, onShelf, onRemove, onMyStatusChange, onEdit, onViewDetail,
+  onReorder, onApprove, onShelf, onRemove, onMyStatusChange, onEdit, onViewDetail, onQueueRate,
 }: SharedQueueViewProps) {
   const proposed   = titles.filter((qt) => qt.status === 'proposed')
   const active     = titles.filter((qt) => qt.status === 'active')
@@ -407,6 +419,7 @@ export function SharedQueueView({
               onMyStatusChange={onMyStatusChange}
               onEdit={onEdit}
               onViewDetail={onViewDetail}
+              onQueueRate={onQueueRate}
             />
           ))}
         </div>

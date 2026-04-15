@@ -7,6 +7,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function ok(data: Record<string, unknown>) {
+  return new Response(JSON.stringify(data), {
+    status: 200,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -16,28 +23,17 @@ serve(async (req) => {
     const { to_email, code, subject, body } = await req.json()
 
     if (!to_email || !code || !subject || !body) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields: to_email, code, subject, body' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return ok({ ok: false, error: 'Missing required fields: to_email, code, subject, body' })
     }
 
-    const resendKey   = Deno.env.get('RESEND_API_KEY')
-    const fromEmail   = Deno.env.get('RESEND_FROM_EMAIL')
-    const replyTo     = Deno.env.get('RESEND_REPLY_TO')
+    const resendKey = Deno.env.get('RESEND_API_KEY')
+    const fromEmail = Deno.env.get('RESEND_FROM_EMAIL')
+    const replyTo   = Deno.env.get('RESEND_REPLY_TO')
 
-    if (!resendKey) {
-      return new Response(
-        JSON.stringify({ error: 'Email service not configured — RESEND_API_KEY missing' }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-    if (!fromEmail) {
-      return new Response(
-        JSON.stringify({ error: 'Email service not configured — RESEND_FROM_EMAIL missing' }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    console.log('[send-invite] from:', fromEmail, '| to:', to_email)
+
+    if (!resendKey) return ok({ ok: false, error: 'RESEND_API_KEY not configured' })
+    if (!fromEmail) return ok({ ok: false, error: 'RESEND_FROM_EMAIL not configured' })
 
     const htmlBody = body
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -54,33 +50,26 @@ serve(async (req) => {
 
     const resp = await fetch(RESEND_API_URL, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
 
+    const respBody = await resp.text()
+    console.log('[send-invite] Resend status:', resp.status, '| body:', respBody)
+
     if (!resp.ok) {
-      let detail = 'Unknown error'
+      let detail = respBody
       try {
-        const errBody = await resp.json()
-        detail = errBody.message ?? errBody.error ?? detail
-      } catch { /* ignore */ }
-      return new Response(
-        JSON.stringify({ error: `Resend error: ${detail}` }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+        const parsed = JSON.parse(respBody)
+        detail = parsed.message ?? parsed.error ?? respBody
+      } catch { /* keep raw */ }
+      return ok({ ok: false, error: `Resend ${resp.status}: ${detail}` })
     }
 
-    return new Response(
-      JSON.stringify({ ok: true }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return ok({ ok: true })
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : 'Internal error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    const msg = err instanceof Error ? err.message : 'Internal error'
+    console.error('[send-invite] exception:', msg)
+    return ok({ ok: false, error: msg })
   }
 })

@@ -388,6 +388,19 @@ export function useWatchlist(userId?: string) {
     [entries, fetchEntries]
   )
 
+  // Set new queue order from a drag — takes the full ordered array of entry IDs
+  const reorderEntriesToPositions = useCallback(
+    async (orderedIds: string[]) => {
+      await Promise.all(
+        orderedIds.map((id, i) =>
+          supabase.from('watchlist_entries').update({ queue_position: i + 1 }).eq('id', id)
+        )
+      )
+      await fetchEntries()
+    },
+    [fetchEntries]
+  )
+
   // Re-fetch streaming availability for all titles in the watchlist,
   // then refresh the entries so the UI reflects the updated data.
   const syncAllAvailability = useCallback(async () => {
@@ -402,5 +415,5 @@ export function useWatchlist(userId?: string) {
     await fetchEntries()
   }, [entries, fetchEntries])
 
-  return { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, rateEntry, deleteEntry, reorderEntry, syncAllAvailability, refresh: fetchEntries }
+  return { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, rateEntry, deleteEntry, reorderEntry, reorderEntriesToPositions, syncAllAvailability, refresh: fetchEntries }
 }

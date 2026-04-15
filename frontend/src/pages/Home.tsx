@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useWatchlist } from '../hooks/useWatchlist'
 import { useSubscriptions } from '../hooks/useSubscriptions'
@@ -10,6 +10,7 @@ import { AddEntryForm } from '../components/title/AddEntryForm'
 import { EditEntryForm } from '../components/title/EditEntryForm'
 import { ListView } from '../components/watchlist/ListView'
 import { CardView } from '../components/watchlist/CardView'
+import { QueueView } from '../components/watchlist/QueueView'
 import { FilterBar } from '../components/watchlist/FilterBar'
 import { RecommendationsPanel, SendRecModal } from '../components/watchlist/RecommendationsPanel'
 import { QueueSwitcher } from '../components/queue/QueueSwitcher'
@@ -21,6 +22,9 @@ import { Button } from '../components/ui/Button'
 import { StreamingServicesModal } from '../components/ui/StreamingServicesModal'
 import { InviteModal } from '../components/ui/InviteModal'
 import { TitleDetailModal } from '../components/title/TitleDetailModal'
+import { AppShell } from '../components/layout/AppShell'
+import { useRecDismissals } from '../hooks/useRecDismissals'
+import type { NavPage } from '../components/layout/AppShell'
 import { supabase } from '../lib/supabase'
 import { upsertTitle, cacheAvailability } from '../hooks/useWatchlist'
 import { Link } from 'react-router-dom'
@@ -93,18 +97,14 @@ function sortUpNext(entries: WatchlistEntryWithTitle[]): WatchlistEntryWithTitle
 // ---------------------------------------------------------------
 export default function Home() {
   const { user, profile, signOut } = useAuth()
-  const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, rateEntry, deleteEntry, reorderEntry, syncAllAvailability } = useWatchlist(user?.id)
+  const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, rateEntry, deleteEntry, reorderEntry, reorderEntriesToPositions, syncAllAvailability } = useWatchlist(user?.id)
   const { subscriptions, subscribedIds, toggleSubscription } = useSubscriptions(user?.id)
   const { queues } = useSharedQueues(user?.id)
   const { map: titleQueueMap, refresh: refreshTitleQueueMap } = useTitleQueueMap(user?.id, queues)
 
-  // Recommendations opt-in — mirrors profile flag, can be toggled per-session
   const [recsEnabled, setRecsEnabled] = useState<boolean>(() => profile?.enable_recommendations ?? true)
 
-  // Collect unique partners from all shared queues (for partner discovery)
   const allPartners = useMemo(() => {
-    // We gather partners from the queue members hook below, but we need a stable
-    // list across all queues. For now derive from entries authored by others.
     const map = new Map<string, string>()
     for (const e of entries) {
       if (e.profile && e.user_id !== user?.id) map.set(e.user_id, e.profile.display_name)
@@ -122,16 +122,21 @@ export default function Home() {
     }
   }
 
-  // Active queue: null = personal list, string = shared queue id
+  // Active shared queue (null = personal / Up Next)
   const [activeQueueId, setActiveQueueId] = useState<string | null>(null)
-
   const { titles: queueTitles, loading: queueLoading, approveTitle, shelfTitle, removeTitle, reorderTitle, refresh: refreshQueueDetail } = useQueueDetail(activeQueueId)
-
   const { recs: groupRecs, loading: groupRecsLoading } = useGroupRecs(activeQueueId, queueTitles, recsEnabled)
+  const { dismissedIds, dismiss: dismissRec } = useRecDismissals(user?.id)
 
   const [queueSearchBusy, setQueueSearchBusy] = useState(false)
   const [addAsProposal, setAddAsProposal] = useState(false)
 
+  // Navigation
+  const [activePage, setActivePage] = useState<NavPage>('list')
+  // Sub-view within My List page
+  const [listView, setListView] = useState<'list' | 'queue' | 'card'>('list')
+
+  // Modals
   const [pendingResult, setPendingResult] = useState<TMDBSearchResult | null>(null)
   const [pendingGenres, setPendingGenres] = useState<string[]>([])
   const [editingEntry, setEditingEntry] = useState<WatchlistEntryWithTitle | null>(null)
@@ -139,14 +144,24 @@ export default function Home() {
   const [addToQueueEntry, setAddToQueueEntry] = useState<WatchlistEntryWithTitle | null>(null)
   const [showCreateQueue, setShowCreateQueue] = useState(false)
   const [showQueueSettings, setShowQueueSettings] = useState(false)
-  const [view, setView] = useState<'list' | 'card'>('list')
   const [showFilters, setShowFilters] = useState(false)
-  const [showRecs, setShowRecs] = useState(false)
   const [showServices, setShowServices] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
   const [detailEntry, setDetailEntry] = useState<WatchlistEntryWithTitle | null>(null)
   const [filter, setFilter] = useState<FilterState>(DEFAULT_FILTER_STATE)
   const [recCount, setRecCount] = useState(0)
+
+  // Clear badge when Activity page is opened
+  useEffect(() => {
+    if (activePage === 'activity') setRecCount(0)
+  }, [activePage])
+
+  // Auto-select the first shared queue when none is selected
+  useEffect(() => {
+    if (activeQueueId === null && queues.length > 0) {
+      setActiveQueueId(queues[0].id)
+    }
+  }, [queues])
 
   useMemo(() => {
     if (!user) return
@@ -185,8 +200,10 @@ export default function Home() {
     },
     {
       label: 'Up next',
-      entries: sortUpNext(filtered.filter((e) => e.status === 'want_to_watch' || (e.status === 'watching' && e.is_caught_up))),
-      isUpNext: true,
+      entries: filter.sortField === 'updated_at'
+        ? sortUpNext(filtered.filter((e) => e.status === 'want_to_watch' || (e.status === 'watching' && e.is_caught_up)))
+        : filtered.filter((e) => e.status === 'want_to_watch' || (e.status === 'watching' && e.is_caught_up)),
+      isUpNext: filter.sortField === 'updated_at',
     },
     {
       label: 'Upcoming',
@@ -204,19 +221,33 @@ export default function Home() {
     filter.search || filter.statuses.length || filter.types.length ||
     filter.genres.length || filter.priorities.length || filter.viewerIds.length
 
-  async function handleRateEntry(entry: import('../types').WatchlistEntryWithTitle, rating: -1 | 1 | 2 | 3 | null) {
+  async function handleRateEntry(entry: WatchlistEntryWithTitle, rating: -1 | 1 | 2 | 3 | null) {
     if (!user) return
     await rateEntry(entry.id, rating, user.id)
+  }
+
+  async function rateQueueTitle(titleId: string, rating: -1 | 1 | 2 | 3 | null) {
+    if (!user || !activeQueueId) return
+    if (rating === null) {
+      await supabase
+        .from('queue_title_ratings')
+        .delete()
+        .eq('queue_id', activeQueueId)
+        .eq('title_id', titleId)
+        .eq('user_id', user.id)
+    } else {
+      await supabase
+        .from('queue_title_ratings')
+        .upsert(
+          { queue_id: activeQueueId, title_id: titleId, user_id: user.id, rating },
+          { onConflict: 'queue_id,title_id,user_id' }
+        )
+    }
   }
 
   async function handleAddEntry(fields: EntryFormFields) {
     if (!pendingResult || !user) return
     await addEntry(pendingResult, pendingGenres, fields, user.id)
-    // If we're in a shared queue, also add the new title to it
-    if (activeQueueId) {
-      // The entry will be created by addEntry; we need the title_id
-      // We'll handle this via the AddToQueueModal flow instead
-    }
     setPendingResult(null)
     setPendingGenres([])
   }
@@ -244,123 +275,235 @@ export default function Home() {
 
   const activeQueue = queues.find((q) => q.id === activeQueueId) ?? null
 
-  return (
-    <div className="min-h-screen bg-[var(--bg-primary)] text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-[var(--bg-primary)]/90 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          <h1 className="text-lg font-bold tracking-tight flex-shrink-0">
-            Que<span className="text-[var(--accent)]">Share</span>
-          </h1>
-          <span className="text-[var(--text-secondary)] text-sm hidden sm:block">
-            {profile?.display_name}
-          </span>
+  // Queue chip shown in mobile header when there's an active shared queue
+  const queueChip = activeQueue ? (
+    <button
+      onClick={() => setActivePage('queue')}
+      className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1 text-[11px] text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer max-w-[140px] overflow-hidden"
+    >
+      <span className="truncate">{activeQueue.name}</span>
+      <span className="text-[9px] flex-shrink-0">▾</span>
+    </button>
+  ) : undefined
 
-          <div className="flex-1" />
+  // ── Page: My List ─────────────────────────────────────────────
+  function renderList() {
+    return (
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3">
+        {/* Toolbar */}
+        <div className="flex gap-2 items-center">
+          <div className="flex-1">
+            <TitleSearch
+              onSelect={(result, genres) => {
+                setPendingResult(result)
+                setPendingGenres(genres)
+              }}
+            />
+          </div>
 
-          {/* Admin link — visible to admins only */}
-          {profile?.is_admin && (
-            <Link
-              to="/admin"
-              className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors px-2 py-1 rounded border border-white/10 hidden sm:block"
+          {/* Sort */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <select
+              value={filter.sortField}
+              onChange={(e) => setFilter({ ...filter, sortField: e.target.value as SortField })}
+              className="bg-[var(--bg-card)] border border-white/10 rounded-lg px-2 py-2 text-xs text-white focus:outline-none focus:border-[var(--accent)] cursor-pointer"
             >
-              Admin
-            </Link>
-          )}
-
-          {/* Invite button — visible to admins and delegates */}
-          {(profile?.is_admin || profile?.can_invite) && (
+              <option value="updated_at"  className="bg-[#1a1a2e]">Recent</option>
+              <option value="created_at"  className="bg-[#1a1a2e]">Added</option>
+              <option value="title"       className="bg-[#1a1a2e]">A–Z</option>
+              <option value="tmdb_rating" className="bg-[#1a1a2e]">Rating</option>
+              <option value="priority"    className="bg-[#1a1a2e]">Priority</option>
+            </select>
             <button
-              onClick={() => setShowInvite(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-[var(--text-secondary)] hover:text-white hover:bg-white/5 border border-white/10 transition-colors cursor-pointer flex-shrink-0"
-              title="Invite someone"
+              type="button"
+              onClick={() => setFilter({ ...filter, sortDir: filter.sortDir === 'asc' ? 'desc' : 'asc' })}
+              className="px-2 py-2 bg-[var(--bg-card)] border border-white/10 rounded-lg text-xs text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
+              title="Toggle sort direction"
             >
-              <span>✉</span>
-              <span className="hidden sm:inline">Invite</span>
+              {filter.sortDir === 'asc' ? '↑' : '↓'}
             </button>
-          )}
+          </div>
 
-          {/* Streaming services */}
-          <button
-            onClick={() => setShowServices(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-[var(--text-secondary)] hover:text-white hover:bg-white/5 border border-white/10 transition-colors cursor-pointer flex-shrink-0"
-            title="My streaming services"
+          <Button
+            variant={showFilters || hasActiveFilter ? 'primary' : 'secondary'}
+            size="md"
+            onClick={() => setShowFilters((v) => !v)}
           >
-            <span>📺</span>
-            <span className="hidden sm:inline">
-              {subscriptions.length > 0 ? `Services (${subscriptions.length})` : 'Services'}
-            </span>
-          </button>
+            {hasActiveFilter ? '● ' : ''}Filters
+          </Button>
 
-          {/* Recommendations bell */}
-          <button
-            onClick={() => setShowRecs((v) => !v)}
-            className="relative px-2.5 py-1.5 rounded-lg text-sm text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
-            title="Recommendations"
-          >
-            🔔
-            {recCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[var(--accent)] text-white text-[9px] font-bold flex items-center justify-center">
-                {recCount}
-              </span>
-            )}
-          </button>
-
-          {/* View toggle */}
+          {/* List / Up Next / Card sub-toggle */}
           <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/10 flex-shrink-0">
             <button
-              onClick={() => setView('list')}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${view === 'list' ? 'bg-white/15 text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
+              onClick={() => setListView('list')}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${listView === 'list' ? 'bg-white/15 text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
+              title="List view"
             >
               ☰
             </button>
             <button
-              onClick={() => setView('card')}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${view === 'card' ? 'bg-white/15 text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
+              onClick={() => setListView('queue')}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${listView === 'queue' ? 'bg-white/15 text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
+              title="Up Next (drag to reorder)"
+            >
+              ▤
+            </button>
+            <button
+              onClick={() => setListView('card')}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${listView === 'card' ? 'bg-white/15 text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
+              title="Card view"
             >
               ⊞
             </button>
           </div>
-
-          <button
-            onClick={signOut}
-            className="flex-shrink-0 text-[var(--text-secondary)] hover:text-white text-xs transition-colors cursor-pointer px-1"
-            title="Sign out"
-          >
-            <span className="hidden sm:inline">Sign out</span>
-            <span className="sm:hidden">↪</span>
-          </button>
         </div>
-      </header>
 
-      <main className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3 sm:space-y-4">
-        {/* Queue switcher */}
-        <QueueSwitcher
-          queues={queues}
-          activeQueueId={activeQueueId}
-          onChange={(id) => { setActiveQueueId(id); setShowFilters(false) }}
-          onCreateNew={() => setShowCreateQueue(true)}
-        />
+        {showFilters && (
+          <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl px-4 pt-4">
+            <FilterBar
+              filter={filter}
+              availableGenres={availableGenres}
+              availableViewers={availableViewers}
+              onChange={setFilter}
+            />
+          </div>
+        )}
 
-        {/* Shared queue header + search */}
+        {loading ? (
+          <div className="text-center py-16 text-[var(--text-secondary)]">Loading…</div>
+        ) : error ? (
+          <div className="text-center py-16 text-red-400">{error}</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 text-[var(--text-secondary)]">
+            {entries.length === 0
+              ? 'Your watchlist is empty. Search for a movie or show above to add one.'
+              : 'No entries match the current filters.'}
+          </div>
+        ) : listView === 'queue' ? (
+          <QueueView
+            entries={entries.filter((e) => e.status === 'want_to_watch' || (e.status === 'watching' && e.is_caught_up))}
+            currentUserId={user?.id}
+            onReorderToPositions={reorderEntriesToPositions}
+            onStatusChange={setStatus}
+            onEdit={setEditingEntry}
+            onRate={handleRateEntry}
+            onDelete={deleteEntry}
+            onViewDetail={setDetailEntry}
+          />
+        ) : listView === 'list' ? (
+          <ListView
+            groups={groups}
+            availability={availability}
+            subscribedIds={subscribedIds}
+            titleQueueMap={titleQueueMap}
+            currentUserId={user?.id}
+            onStatusChange={setStatus}
+            onPriorityCycle={cyclePriority}
+            onCaughtUpToggle={toggleCaughtUp}
+            onEdit={setEditingEntry}
+            onReorder={reorderEntry}
+            onRecommend={setRecommendEntry}
+            onAddToQueue={queues.length > 0 ? setAddToQueueEntry : undefined}
+            onRate={handleRateEntry}
+            onDelete={deleteEntry}
+            onViewDetail={setDetailEntry}
+          />
+        ) : (
+          <CardView
+            groups={groups}
+            availability={availability}
+            subscribedIds={subscribedIds}
+            titleQueueMap={titleQueueMap}
+            currentUserId={user?.id}
+            onStatusChange={setStatus}
+            onPriorityCycle={cyclePriority}
+            onCaughtUpToggle={toggleCaughtUp}
+            onEdit={setEditingEntry}
+            onReorder={reorderEntry}
+            onRecommend={setRecommendEntry}
+            onAddToQueue={queues.length > 0 ? setAddToQueueEntry : undefined}
+            onRate={handleRateEntry}
+            onDelete={deleteEntry}
+            onViewDetail={setDetailEntry}
+          />
+        )}
+      </div>
+    )
+  }
+
+  // ── Page: Queues (shared queues only) ────────────────────────
+  function renderQueue() {
+    if (queues.length === 0) {
+      return (
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3">
+          <div className="text-center py-16 text-[var(--text-secondary)] space-y-3">
+            <p>You don't have any shared queues yet.</p>
+            <button
+              onClick={() => setShowCreateQueue(true)}
+              className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-sm font-medium cursor-pointer hover:bg-[var(--accent-hover)] transition-colors"
+            >
+              + Create a shared queue
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3">
         {activeQueue && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-semibold text-white">{activeQueue.name}</h2>
-                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                  {queueTitles.length} title{queueTitles.length !== 1 ? 's' : ''} · shared queue
-                </p>
+          <>
+            {queues.length > 1 ? (
+              // Multiple queues: switcher + actions on one row
+              <div className="flex items-center gap-2">
+                <QueueSwitcher
+                  queues={queues}
+                  activeQueueId={activeQueueId}
+                  onChange={(id) => setActiveQueueId(id)}
+                  onCreateNew={() => setShowCreateQueue(true)}
+                  showPersonal={false}
+                  showNewButton={false}
+                />
+                <div className="flex-1" />
+                <button
+                  onClick={() => setShowCreateQueue(true)}
+                  className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors border border-white/10 border-dashed rounded-lg px-3 py-1.5 cursor-pointer flex-shrink-0"
+                >
+                  + New queue
+                </button>
+                <button
+                  onClick={() => setShowQueueSettings(true)}
+                  className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors border border-white/10 rounded-lg px-3 py-1.5 cursor-pointer flex-shrink-0"
+                >
+                  ⚙ Members
+                </button>
               </div>
-              <button
-                onClick={() => setShowQueueSettings(true)}
-                className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors border border-white/10 rounded-lg px-3 py-1.5 cursor-pointer"
-              >
-                ⚙ Members
-              </button>
-            </div>
+            ) : (
+              // Single queue: name + subtitle + actions
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-semibold text-white">{activeQueue.name}</h2>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                    {queueTitles.length} title{queueTitles.length !== 1 ? 's' : ''} · shared queue
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowCreateQueue(true)}
+                    className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors border border-white/10 border-dashed rounded-lg px-3 py-1.5 cursor-pointer"
+                  >
+                    + New queue
+                  </button>
+                  <button
+                    onClick={() => setShowQueueSettings(true)}
+                    className="text-xs text-[var(--text-secondary)] hover:text-white transition-colors border border-white/10 rounded-lg px-3 py-1.5 cursor-pointer"
+                  >
+                    ⚙ Members
+                  </button>
+                </div>
+              </div>
+            )}
 
-            {/* Direct search — add or propose a title in this shared queue */}
             <TitleSearch
               placeholder="Search to add a title to this queue…"
               onSelect={async (result, genres) => {
@@ -393,58 +536,10 @@ export default function Home() {
             {queueSearchBusy && (
               <p className="text-xs text-[var(--text-secondary)] px-1">Adding…</p>
             )}
-          </div>
-        )}
 
-        {/* Recommendations panel */}
-        {showRecs && user && (
-          <RecommendationsPanel
-            currentUserId={user.id}
-            onClose={() => { setShowRecs(false); setRecCount(0) }}
-          />
-        )}
-
-        {/* Search + filters (personal list only) */}
-        {activeQueueId === null && (
-          <>
-            <div className="flex gap-2 items-center">
-              <div className="flex-1">
-                <TitleSearch
-                  onSelect={(result, genres) => {
-                    setPendingResult(result)
-                    setPendingGenres(genres)
-                  }}
-                />
-              </div>
-              <Button
-                variant={showFilters || hasActiveFilter ? 'primary' : 'secondary'}
-                size="md"
-                onClick={() => setShowFilters((v) => !v)}
-              >
-                {hasActiveFilter ? '●' : ''} Filters
-              </Button>
-            </div>
-
-            {showFilters && (
-              <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl px-4 pt-4">
-                <FilterBar
-                  filter={filter}
-                  availableGenres={availableGenres}
-                  availableViewers={availableViewers}
-                  onChange={setFilter}
-                />
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Main content */}
-        {activeQueueId !== null ? (
-          // Shared queue view
-          queueLoading ? (
-            <div className="text-center py-16 text-[var(--text-secondary)]">Loading…</div>
-          ) : (
-            <>
+            {queueLoading ? (
+              <div className="text-center py-16 text-[var(--text-secondary)]">Loading…</div>
+            ) : (
               <SharedQueueView
                 titles={queueTitles}
                 availability={availability}
@@ -456,88 +551,165 @@ export default function Home() {
                 onMyStatusChange={setStatus}
                 onEdit={setEditingEntry}
                 onViewDetail={setDetailEntry}
+                onQueueRate={rateQueueTitle}
               />
-              <GroupRecsPanel
-                recs={groupRecs}
-                loading={groupRecsLoading}
-                onSelect={(result) => {
-                  setPendingResult(result)
-                  setPendingGenres([])
-                }}
-              />
-            </>
-          )
-        ) : (
-          // Personal list view
-          loading ? (
-            <div className="text-center py-16 text-[var(--text-secondary)]">Loading…</div>
-          ) : error ? (
-            <div className="text-center py-16 text-red-400">{error}</div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-16 text-[var(--text-secondary)]">
-              {entries.length === 0
-                ? 'Your watchlist is empty. Search for a movie or show above to add one.'
-                : 'No entries match the current filters.'}
+            )}
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // ── Page: Browse ──────────────────────────────────────────────
+  function renderBrowse() {
+    async function addToQueue(result: TMDBSearchResult) {
+      if (!user || !activeQueueId) return
+      const titleId = await upsertTitle(result, [])
+      cacheAvailability(titleId, result.id, result.media_type === 'movie' ? 'movie' : 'tv')
+      const { error } = await supabase.from('queue_titles').insert({
+        queue_id: activeQueueId,
+        title_id: titleId,
+        added_by: user.id,
+        status: 'active',
+      })
+      if (error && error.code !== '23505') throw error
+      await refreshQueueDetail()
+    }
+
+    return (
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+        <PersonalRecsPanel
+          personalRecs={personalRecs}
+          personalLoading={personalRecsLoading}
+          partnerRecs={partnerRecs}
+          myEntries={entries}
+          recsEnabled={recsEnabled}
+          dismissedIds={dismissedIds}
+          onToggleEnabled={handleToggleRecs}
+          onSelect={(result) => {
+            setPendingResult(result)
+            setPendingGenres([])
+          }}
+          onDismiss={dismissRec}
+        />
+        {activeQueueId && (
+          <div className="mt-4">
+            <GroupRecsPanel
+              recs={groupRecs}
+              loading={groupRecsLoading}
+              queueName={activeQueue?.name}
+              dismissedIds={dismissedIds}
+              onSelect={addToQueue}
+              onDismiss={dismissRec}
+            />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── Page: Activity ────────────────────────────────────────────
+  function renderActivity() {
+    if (!user) return null
+    return (
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+        <RecommendationsPanel
+          currentUserId={user.id}
+          onClose={() => setActivePage('list')}
+        />
+      </div>
+    )
+  }
+
+  // ── Page: Settings ────────────────────────────────────────────
+  function renderSettings() {
+    return (
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3">
+        <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider px-1">Settings</h2>
+
+        <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl overflow-hidden divide-y divide-white/10">
+          {/* Streaming Services */}
+          <button
+            onClick={() => setShowServices(true)}
+            className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-white hover:bg-white/5 transition-colors cursor-pointer text-left"
+          >
+            <span className="text-base">📺</span>
+            <div>
+              <div className="font-medium">Streaming Services</div>
+              <div className="text-xs text-[var(--text-secondary)] mt-0.5">
+                {subscriptions.length > 0 ? `${subscriptions.length} service${subscriptions.length !== 1 ? 's' : ''} configured` : 'No services added yet'}
+              </div>
             </div>
-          ) : view === 'list' ? (
-            <ListView
-              groups={groups}
-              availability={availability}
-              subscribedIds={subscribedIds}
-              titleQueueMap={titleQueueMap}
-              currentUserId={user?.id}
-              onStatusChange={setStatus}
-              onPriorityCycle={cyclePriority}
-              onCaughtUpToggle={toggleCaughtUp}
-              onEdit={setEditingEntry}
-              onReorder={reorderEntry}
-              onRecommend={setRecommendEntry}
-              onAddToQueue={queues.length > 0 ? setAddToQueueEntry : undefined}
-              onRate={handleRateEntry}
-              onDelete={deleteEntry}
-              onViewDetail={setDetailEntry}
-            />
-          ) : (
-            <CardView
-              groups={groups}
-              availability={availability}
-              subscribedIds={subscribedIds}
-              titleQueueMap={titleQueueMap}
-              currentUserId={user?.id}
-              onStatusChange={setStatus}
-              onPriorityCycle={cyclePriority}
-              onCaughtUpToggle={toggleCaughtUp}
-              onEdit={setEditingEntry}
-              onReorder={reorderEntry}
-              onRecommend={setRecommendEntry}
-              onAddToQueue={queues.length > 0 ? setAddToQueueEntry : undefined}
-              onRate={handleRateEntry}
-              onDelete={deleteEntry}
-              onViewDetail={setDetailEntry}
-            />
-          )
-        )}
+            <span className="ml-auto text-[var(--text-secondary)] text-xs">›</span>
+          </button>
 
-        {/* Personal recommendations panel — only on personal list view */}
-        {activeQueueId === null && !loading && (
-          <PersonalRecsPanel
-            personalRecs={personalRecs}
-            personalLoading={personalRecsLoading}
-            partnerRecs={partnerRecs}
-            myEntries={entries}
-            recsEnabled={recsEnabled}
-            onToggleEnabled={handleToggleRecs}
-            onSelect={(result) => {
-              setPendingResult(result)
-              setPendingGenres([])
-            }}
-          />
-        )}
-      </main>
+          {/* Invite */}
+          {(profile?.is_admin || profile?.can_invite) && (
+            <button
+              onClick={() => setShowInvite(true)}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-white hover:bg-white/5 transition-colors cursor-pointer text-left"
+            >
+              <span className="text-base">✉</span>
+              <div>
+                <div className="font-medium">Invite Someone</div>
+                <div className="text-xs text-[var(--text-secondary)] mt-0.5">Send an invite link to join QueShare</div>
+              </div>
+              <span className="ml-auto text-[var(--text-secondary)] text-xs">›</span>
+            </button>
+          )}
 
-      <PolicyFooter />
+          {/* Admin */}
+          {profile?.is_admin && (
+            <Link
+              to="/admin"
+              className="flex items-center gap-3 px-4 py-3.5 text-sm text-white hover:bg-white/5 transition-colors"
+            >
+              <span className="text-base">🛡</span>
+              <div>
+                <div className="font-medium">Admin Panel</div>
+                <div className="text-xs text-[var(--text-secondary)] mt-0.5">Manage users and invite codes</div>
+              </div>
+              <span className="ml-auto text-[var(--text-secondary)] text-xs">›</span>
+            </Link>
+          )}
+        </div>
 
-      {/* Add entry modal */}
+        {/* Account */}
+        <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl overflow-hidden">
+          <button
+            onClick={signOut}
+            className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-red-400 hover:bg-white/5 transition-colors cursor-pointer text-left"
+          >
+            <span className="text-base">↪</span>
+            <span>Sign out</span>
+          </button>
+        </div>
+
+        <PolicyFooter />
+      </div>
+    )
+  }
+
+  // ── Render ────────────────────────────────────────────────────
+  return (
+    <>
+      <AppShell
+        activePage={activePage}
+        onNavigate={setActivePage}
+        activityCount={recCount}
+        profile={profile}
+        onSignOut={signOut}
+        headerExtra={queueChip}
+      >
+        {activePage === 'list'     && renderList()}
+        {activePage === 'queue'    && renderQueue()}
+        {activePage === 'browse'   && renderBrowse()}
+        {activePage === 'activity' && renderActivity()}
+        {activePage === 'settings' && renderSettings()}
+      </AppShell>
+
+      {/* Global modals (page-independent) */}
+
       {pendingResult && (
         <AddEntryForm
           result={pendingResult}
@@ -547,7 +719,6 @@ export default function Home() {
         />
       )}
 
-      {/* Edit entry modal */}
       {editingEntry && (
         <EditEntryForm
           entry={editingEntry}
@@ -556,7 +727,6 @@ export default function Home() {
         />
       )}
 
-      {/* Send recommendation modal */}
       {recommendEntry && user && (
         <SendRecModal
           entry={recommendEntry}
@@ -565,7 +735,6 @@ export default function Home() {
         />
       )}
 
-      {/* Add to queue modal */}
       {addToQueueEntry && user && (
         <AddToQueueModal
           entry={addToQueueEntry}
@@ -584,7 +753,6 @@ export default function Home() {
         />
       )}
 
-      {/* Create queue modal */}
       {showCreateQueue && user && (
         <CreateQueueModal
           currentUserId={user.id}
@@ -593,7 +761,6 @@ export default function Home() {
         />
       )}
 
-      {/* Title detail modal */}
       {detailEntry && (
         <TitleDetailModal
           entry={detailEntry}
@@ -608,7 +775,6 @@ export default function Home() {
         />
       )}
 
-      {/* Invite modal */}
       {showInvite && user && profile && (
         <InviteModal
           inviterName={profile.display_name}
@@ -617,7 +783,6 @@ export default function Home() {
         />
       )}
 
-      {/* Streaming services modal */}
       {showServices && (
         <StreamingServicesModal
           subscriptions={subscriptions}
@@ -628,7 +793,6 @@ export default function Home() {
         />
       )}
 
-      {/* Queue settings modal */}
       {showQueueSettings && activeQueue && user && (
         <QueueSettingsModal
           queue={activeQueue}
@@ -637,6 +801,6 @@ export default function Home() {
           onDeleted={() => { setShowQueueSettings(false); setActiveQueueId(null) }}
         />
       )}
-    </div>
+    </>
   )
 }
