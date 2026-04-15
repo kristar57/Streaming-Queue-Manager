@@ -667,25 +667,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Recommendations toggle */}
-        <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl overflow-hidden">
-          <button
-            onClick={() => handleToggleRecs(!recsEnabled)}
-            className="w-full flex items-center gap-3 px-4 py-3.5 text-sm text-white hover:bg-white/5 transition-colors cursor-pointer text-left"
-          >
-            <span className="text-base">✨</span>
-            <div className="flex-1">
-              <div className="font-medium">Recommendations</div>
-              <div className="text-xs text-[var(--text-secondary)] mt-0.5">
-                {recsEnabled ? 'Enabled — showing personalised picks' : 'Disabled'}
-              </div>
-            </div>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${recsEnabled ? 'bg-[var(--accent)]/20 text-[var(--accent)]' : 'bg-white/10 text-[var(--text-secondary)]'}`}>
-              {recsEnabled ? 'On' : 'Off'}
-            </span>
-          </button>
-        </div>
-
         {/* Log out */}
         <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl overflow-hidden">
           <button
