@@ -180,7 +180,7 @@ function QueueRow({
                   }
                 }}
                 disabled={!isShelved && !myEntry}
-                className={`text-[15px] font-medium text-white leading-snug text-left ${(isShelved || myEntry) ? 'hover:text-[var(--accent)] transition-colors cursor-pointer' : ''}`}
+                className={`text-base font-medium text-white leading-snug text-left ${(isShelved || myEntry) ? 'hover:text-[var(--accent)] transition-colors cursor-pointer' : ''}`}
               >
                 {title.title}
               </button>
@@ -203,7 +203,7 @@ function QueueRow({
             </div>
 
             {/* Meta */}
-            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-[var(--text-secondary)] flex-wrap">
+            <div className="flex items-center gap-1.5 mt-0.5 text-[13px] text-[var(--text-secondary)] flex-wrap">
               {year && <span>{year}</span>}
               {title.genres.slice(0, 2).map((g) => <span key={g}>· {g}</span>)}
               {runtime && <span>· {runtime}</span>}
