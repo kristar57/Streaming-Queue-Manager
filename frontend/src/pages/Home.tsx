@@ -376,7 +376,7 @@ export default function Home() {
           </div>
         ) : listView === 'queue' ? (
           <QueueView
-            entries={entries.filter((e) => e.status === 'want_to_watch' || (e.status === 'watching' && e.is_caught_up))}
+            entries={sortUpNext(entries.filter((e) => e.status === 'want_to_watch' || (e.status === 'watching' && e.is_caught_up)))}
             currentUserId={user?.id}
             onReorderToPositions={reorderEntriesToPositions}
             onStatusChange={setStatus}

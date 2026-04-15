@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -189,12 +189,17 @@ export function QueueView({
   onViewDetail,
 }: QueueViewProps) {
   const [localOrder, setLocalOrder] = useState<string[]>(() => entries.map((e) => e.id))
+  const isSavingRef = useRef(false)
 
-  // Sync local order when entries change from outside (e.g. after DB update)
-  const entryIds = entries.map((e) => e.id).join(',')
-  if (localOrder.join(',') !== entryIds && !localOrder.some((id) => !entries.find((e) => e.id === id))) {
-    setLocalOrder(entries.map((e) => e.id))
-  }
+  // Sync local order when entries are added or removed, but not while a drag-save is in flight
+  useEffect(() => {
+    if (isSavingRef.current) return
+    const entryIds = entries.map((e) => e.id)
+    const entrySet = new Set(entryIds)
+    const localSet = new Set(localOrder)
+    const membershipChanged = entryIds.some((id) => !localSet.has(id)) || localOrder.some((id) => !entrySet.has(id))
+    if (membershipChanged) setLocalOrder(entryIds)
+  }, [entries])
 
   const orderedEntries = localOrder
     .map((id) => entries.find((e) => e.id === id))
@@ -212,7 +217,9 @@ export function QueueView({
     const newIndex = localOrder.indexOf(over.id as string)
     const newOrder = arrayMove(localOrder, oldIndex, newIndex)
     setLocalOrder(newOrder)
+    isSavingRef.current = true
     await onReorderToPositions(newOrder)
+    isSavingRef.current = false
   }
 
   if (orderedEntries.length === 0) {
