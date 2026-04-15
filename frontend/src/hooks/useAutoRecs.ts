@@ -101,14 +101,22 @@ export function useGroupRecs(
   const [recs, setRecs] = useState<TMDBSearchResult[]>([])
   const [loading, setLoading] = useState(false)
 
+  // Recompute whenever any queue rating changes
+  const ratingsSig = titles
+    .flatMap((qt) => qt.member_entries.map((m) => `${qt.title_id}:${m.user_id}:${m.queue_rating}`))
+    .join(',')
+
   useEffect(() => {
     if (!queueId || !enabled || titles.length === 0) { setRecs([]); return }
 
-    const cacheKey = `group_recs_${queueId}`
+    // Cache key includes ratings so stale cache is bypassed when ratings change
+    const cacheKey = `group_recs_${queueId}_${ratingsSig.length}`
     const cached = sessionStorage.getItem(cacheKey)
     if (cached) {
       try { setRecs(JSON.parse(cached)); return } catch {}
     }
+    // Clear any old cache entries for this queue
+    sessionStorage.removeItem(`group_recs_${queueId}`)
 
     type SeedInfo = { tmdbId: number; type: 'movie' | 'tv'; score: number }
     const seedMap = new Map<number, SeedInfo>()
@@ -162,7 +170,8 @@ export function useGroupRecs(
       sessionStorage.setItem(cacheKey, JSON.stringify(sorted))
       setLoading(false)
     })()
-  }, [queueId, enabled])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queueId, enabled, ratingsSig])
 
   return { recs, loading }
 }

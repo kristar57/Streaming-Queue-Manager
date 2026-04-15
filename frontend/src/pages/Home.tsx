@@ -129,7 +129,7 @@ export default function Home() {
   const { dismissedIds, dismiss: dismissRec } = useRecDismissals(user?.id)
 
   const [queueSearchBusy, setQueueSearchBusy] = useState(false)
-  const [addAsProposal, setAddAsProposal] = useState(false)
+  const [pendingQueueResult, setPendingQueueResult] = useState<{ result: TMDBSearchResult; genres: string[] } | null>(null)
 
   // Navigation
   const [activePage, setActivePage] = useState<NavPage>('list')
@@ -243,6 +243,7 @@ export default function Home() {
           { onConflict: 'queue_id,title_id,user_id' }
         )
     }
+    await refreshQueueDetail()
   }
 
   async function handleAddEntry(fields: EntryFormFields) {
@@ -504,37 +505,76 @@ export default function Home() {
               </div>
             )}
 
-            <TitleSearch
-              placeholder="Search to add a title to this queue…"
-              onSelect={async (result, genres) => {
-                if (!user || queueSearchBusy) return
-                setQueueSearchBusy(true)
-                try {
-                  const titleId = await upsertTitle(result, genres)
-                  cacheAvailability(titleId, result.id, result.media_type === 'movie' ? 'movie' : 'tv')
-                  const { error } = await supabase.from('queue_titles').insert({
-                    queue_id: activeQueueId,
-                    title_id: titleId,
-                    added_by: user.id,
-                    status: addAsProposal ? 'proposed' : 'active',
-                  })
-                  if (error && error.code !== '23505') throw error
-                } finally {
-                  setQueueSearchBusy(false)
-                }
-              }}
-            />
-            <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)] cursor-pointer select-none px-1">
-              <input
-                type="checkbox"
-                checked={addAsProposal}
-                onChange={(e) => setAddAsProposal(e.target.checked)}
-                className="rounded border border-white/20 bg-white/5 accent-[var(--accent)] cursor-pointer"
+            {pendingQueueResult ? (
+              // Confirm panel — choose how to add
+              <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl px-4 py-3 space-y-3">
+                <div className="flex items-center gap-3">
+                  {pendingQueueResult.result.poster_path && (
+                    <img
+                      src={`https://image.tmdb.org/t/p/w92${pendingQueueResult.result.poster_path}`}
+                      alt=""
+                      className="w-9 h-[54px] object-cover rounded flex-shrink-0"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">
+                      {pendingQueueResult.result.title ?? pendingQueueResult.result.name}
+                    </p>
+                    <p className="text-xs text-[var(--text-secondary)]">How would you like to add this?</p>
+                  </div>
+                  <button
+                    onClick={() => setPendingQueueResult(null)}
+                    className="text-[var(--text-secondary)] hover:text-white transition-colors text-lg leading-none cursor-pointer flex-shrink-0"
+                  >×</button>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    disabled={queueSearchBusy}
+                    onClick={async () => {
+                      if (!user || !activeQueueId) return
+                      setQueueSearchBusy(true)
+                      try {
+                        const { result, genres } = pendingQueueResult
+                        const titleId = await upsertTitle(result, genres)
+                        cacheAvailability(titleId, result.id, result.media_type === 'movie' ? 'movie' : 'tv')
+                        const { error } = await supabase.from('queue_titles').insert({
+                          queue_id: activeQueueId, title_id: titleId, added_by: user.id, status: 'active',
+                        })
+                        if (error && error.code !== '23505') throw error
+                        setPendingQueueResult(null)
+                      } finally { setQueueSearchBusy(false) }
+                    }}
+                    className="flex-1 py-2 rounded-lg text-xs font-medium bg-[var(--accent)]/20 border border-[var(--accent)]/30 text-[var(--accent)] hover:bg-[var(--accent)]/30 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    + Add to queue
+                  </button>
+                  <button
+                    disabled={queueSearchBusy}
+                    onClick={async () => {
+                      if (!user || !activeQueueId) return
+                      setQueueSearchBusy(true)
+                      try {
+                        const { result, genres } = pendingQueueResult
+                        const titleId = await upsertTitle(result, genres)
+                        cacheAvailability(titleId, result.id, result.media_type === 'movie' ? 'movie' : 'tv')
+                        const { error } = await supabase.from('queue_titles').insert({
+                          queue_id: activeQueueId, title_id: titleId, added_by: user.id, status: 'proposed',
+                        })
+                        if (error && error.code !== '23505') throw error
+                        setPendingQueueResult(null)
+                      } finally { setQueueSearchBusy(false) }
+                    }}
+                    className="flex-1 py-2 rounded-lg text-xs font-medium bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 hover:bg-yellow-500/20 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    Propose for approval
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <TitleSearch
+                placeholder="Search to add a title to this queue…"
+                onSelect={(result, genres) => setPendingQueueResult({ result, genres })}
               />
-              Propose for approval (other members can approve or reject)
-            </label>
-            {queueSearchBusy && (
-              <p className="text-xs text-[var(--text-secondary)] px-1">Adding…</p>
             )}
 
             {queueLoading ? (
