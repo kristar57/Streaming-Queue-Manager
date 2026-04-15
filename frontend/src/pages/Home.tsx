@@ -291,34 +291,32 @@ export default function Home() {
   function renderList() {
     return (
       <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3">
-        {/* Toolbar */}
-        <div className="flex gap-2 items-center">
-          <div className="flex-1">
-            <TitleSearch
-              onSelect={(result, genres) => {
-                setPendingResult(result)
-                setPendingGenres(genres)
-              }}
-            />
-          </div>
+        {/* Row 1: Search (full width) */}
+        <TitleSearch
+          onSelect={(result, genres) => {
+            setPendingResult(result)
+            setPendingGenres(genres)
+          }}
+        />
 
-          {/* Sort */}
+        {/* Row 2: Sort + filters + view toggle */}
+        <div className="flex gap-2 items-center">
           <div className="flex items-center gap-1 flex-shrink-0">
             <select
               value={filter.sortField}
               onChange={(e) => setFilter({ ...filter, sortField: e.target.value as SortField })}
-              className="bg-[var(--bg-card)] border border-white/10 rounded-lg px-2 py-2 text-xs text-white focus:outline-none focus:border-[var(--accent)] cursor-pointer"
+              className="bg-[var(--bg-card)] border border-white/10 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:border-[var(--accent)] cursor-pointer"
             >
-              <option value="updated_at"  className="bg-[#1a1a2e]">Recent</option>
-              <option value="created_at"  className="bg-[#1a1a2e]">Added</option>
-              <option value="title"       className="bg-[#1a1a2e]">A–Z</option>
-              <option value="tmdb_rating" className="bg-[#1a1a2e]">Rating</option>
-              <option value="priority"    className="bg-[#1a1a2e]">Priority</option>
+              <option value="updated_at">Recent</option>
+              <option value="created_at">Added</option>
+              <option value="title">A–Z</option>
+              <option value="tmdb_rating">Rating</option>
+              <option value="priority">Priority</option>
             </select>
             <button
               type="button"
               onClick={() => setFilter({ ...filter, sortDir: filter.sortDir === 'asc' ? 'desc' : 'asc' })}
-              className="px-2 py-2 bg-[var(--bg-card)] border border-white/10 rounded-lg text-xs text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
+              className="px-2 py-2 bg-[var(--bg-card)] border border-white/10 rounded-lg text-sm text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
               title="Toggle sort direction"
             >
               {filter.sortDir === 'asc' ? '↑' : '↓'}
@@ -333,29 +331,25 @@ export default function Home() {
             {hasActiveFilter ? '● ' : ''}Filters
           </Button>
 
+          <div className="flex-1" />
+
           {/* List / Up Next / Card sub-toggle */}
           <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/10 flex-shrink-0">
             <button
               onClick={() => setListView('list')}
               className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${listView === 'list' ? 'bg-white/15 text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
               title="List view"
-            >
-              ☰
-            </button>
+            >☰</button>
             <button
               onClick={() => setListView('queue')}
               className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${listView === 'queue' ? 'bg-white/15 text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
-              title="Up Next (drag to reorder)"
-            >
-              ▤
-            </button>
+              title="Up Next"
+            >▤</button>
             <button
               onClick={() => setListView('card')}
               className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${listView === 'card' ? 'bg-white/15 text-white' : 'text-[var(--text-secondary)] hover:text-white'}`}
               title="Card view"
-            >
-              ⊞
-            </button>
+            >⊞</button>
           </div>
         </div>
 

@@ -46,7 +46,7 @@ export function ListView({ groups, availability, subscribedIds, titleQueueMap, c
               {group.label} ({group.entries.length})
             </button>
             {!collapsed.has(group.label) && (
-              <div className="bg-[var(--bg-card)] rounded-xl border border-white/10 divide-y divide-white/5 overflow-hidden">
+              <div className="bg-[var(--bg-card)] rounded-xl border border-white/20 divide-y divide-white/10 overflow-hidden">
                 {group.entries.map((entry, idx) => (
                   <EntryRow
                     key={entry.id}

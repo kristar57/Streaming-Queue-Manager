@@ -92,37 +92,37 @@ export function EntryRow({
         )}
 
         {/* Poster thumbnail */}
-        <button onClick={() => onViewDetail(entry)} className="cursor-pointer flex-shrink-0 mt-0.5">
+        <button onClick={() => onViewDetail(entry)} className="cursor-pointer flex-shrink-0">
           {title.poster_path ? (
             <img
               src={thumbnailUrl(title.poster_path)}
               alt=""
-              className="w-9 h-[54px] object-cover rounded hover:opacity-80 transition-opacity"
+              className="w-11 h-[66px] object-cover rounded hover:opacity-80 transition-opacity"
             />
           ) : (
-            <div className="w-9 h-[54px] bg-white/10 rounded flex items-center justify-center text-white/20 text-xs">?</div>
+            <div className="w-11 h-[66px] bg-white/10 rounded flex items-center justify-center text-white/20 text-xs">?</div>
           )}
         </button>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Title row */}
-          <div className="flex items-start gap-1.5">
-            <button onClick={() => onPriorityCycle(entry)} className="cursor-pointer flex-shrink-0 mt-0.5" title="Cycle priority">
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => onPriorityCycle(entry)} className="cursor-pointer flex-shrink-0" title="Cycle priority">
               <PriorityDot priority={entry.priority} />
             </button>
-            <button onClick={() => onViewDetail(entry)} className="text-base font-medium text-white leading-snug flex-1 min-w-0 text-left hover:text-[var(--accent)] transition-colors cursor-pointer">
+            <button onClick={() => onViewDetail(entry)} className="text-[15px] font-medium text-white leading-snug flex-1 min-w-0 text-left hover:text-[var(--accent)] transition-colors cursor-pointer truncate">
               {title.title}
             </button>
+          </div>
+
+          {/* Meta line — chip lives here so title row stays clean */}
+          <div className="flex items-center gap-1 mt-0.5 flex-wrap text-[13px] text-[var(--text-secondary)]">
             {statusChip && (
-              <span className={`flex-shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${CHIP_COLORS[statusChip.color]}`}>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${CHIP_COLORS[statusChip.color]}`}>
                 {statusChip.label}
               </span>
             )}
-          </div>
-
-          {/* Meta line */}
-          <div className="flex items-center gap-1 mt-0.5 flex-wrap text-[13px] text-[var(--text-secondary)]">
             {year && <span>{year}</span>}
             {title.genres.slice(0, 2).map((g) => <span key={g}>· {g}</span>)}
             {runtime && <span>· {runtime}</span>}
@@ -200,7 +200,7 @@ export function EntryRow({
 
       {/* Actions row */}
       {expanded && (
-        <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(36px+10px+8px)]">
+        <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(44px+10px+6px)]">
           {(entry.status === 'watching' || entry.status === 'want_to_watch') && title.type === 'show' && (
             <button
               onClick={() => onCaughtUpToggle(entry)}

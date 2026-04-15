@@ -161,9 +161,9 @@ function QueueRow({
             className={`flex-shrink-0 mt-0.5 ${(isShelved || myEntry) ? 'cursor-pointer' : 'cursor-default'}`}
           >
             {title.poster_path ? (
-              <img src={thumbnailUrl(title.poster_path)} alt="" className={`w-9 h-[54px] object-cover rounded ${(isShelved || myEntry) ? 'hover:opacity-80 transition-opacity' : ''}`} />
+              <img src={thumbnailUrl(title.poster_path)} alt="" className={`w-11 h-[66px] object-cover rounded ${(isShelved || myEntry) ? 'hover:opacity-80 transition-opacity' : ''}`} />
             ) : (
-              <div className="w-9 h-[54px] bg-white/10 rounded flex items-center justify-center text-white/20 text-xs">?</div>
+              <div className="w-11 h-[66px] bg-white/10 rounded flex items-center justify-center text-white/20 text-xs">?</div>
             )}
           </button>
 
@@ -293,7 +293,7 @@ function QueueRow({
 
         {/* Expanded actions — proposed and active only */}
         {expanded && !isShelved && (
-          <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(16px+36px+10px+8px)]">
+          <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(16px+44px+10px+6px)]">
 
             {/* Proposed */}
             {isProposed && (
@@ -403,7 +403,7 @@ export function SharedQueueView({
         <h2 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider px-4 mb-1">
           {label} ({group.length})
         </h2>
-        <div className="bg-[var(--bg-card)] rounded-xl border border-white/10 divide-y divide-white/5 overflow-hidden">
+        <div className="bg-[var(--bg-card)] rounded-xl border border-white/20 divide-y divide-white/10 overflow-hidden">
           {group.map((qt, idx) => (
             <QueueRow
               key={qt.id}
