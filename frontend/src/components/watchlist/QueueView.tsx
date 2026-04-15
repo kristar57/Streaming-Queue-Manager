@@ -75,7 +75,7 @@ function SortableRow({
       <div className="flex items-start gap-2.5">
         {/* Drag handle */}
         <button
-          className="self-center flex-shrink-0 text-[var(--text-secondary)] hover:text-white cursor-grab active:cursor-grabbing touch-none p-1"
+          className="self-center flex-shrink-0 text-[var(--text-secondary)] hover:text-white cursor-grab active:cursor-grabbing touch-none p-2"
           {...attributes}
           {...listeners}
           title="Drag to reorder"
@@ -202,7 +202,7 @@ export function QueueView({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
   )
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -230,6 +230,7 @@ export function QueueView({
       </div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={localOrder} strategy={verticalListSortingStrategy}>
+          <div style={{ touchAction: 'pan-y' }}>
           {orderedEntries.map((entry) => (
             <SortableRow
               key={entry.id}
@@ -242,6 +243,7 @@ export function QueueView({
               onViewDetail={onViewDetail}
             />
           ))}
+          </div>
         </SortableContext>
       </DndContext>
     </div>
