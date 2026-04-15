@@ -40,7 +40,7 @@ export function ListView({ groups, availability, subscribedIds, titleQueueMap, c
           <section key={group.label}>
             <button
               onClick={() => toggle(group.label)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider px-3 mb-1 hover:text-white transition-colors cursor-pointer w-full text-left"
+              className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider px-3 mb-1 hover:text-white transition-colors cursor-pointer w-full text-left"
             >
               <span className="text-[10px] opacity-60">{collapsed.has(group.label) ? '▶' : '▼'}</span>
               {group.label} ({group.entries.length})

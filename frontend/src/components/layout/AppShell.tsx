@@ -8,7 +8,7 @@ interface Props {
   activityCount: number
   profile: { display_name: string; is_admin?: boolean } | null
   onSignOut: () => void
-  /** Rendered in both the mobile header and the desktop topbar (e.g. queue chip) */
+  /** Rendered in the desktop topbar only (e.g. queue chip) */
   headerExtra?: React.ReactNode
   children: React.ReactNode
 }
@@ -123,33 +123,8 @@ export function AppShell({
           {headerExtra}
         </header>
 
-        {/* Mobile / tablet top header */}
-        <header className="lg:hidden sticky top-0 z-30 bg-[var(--bg-primary)]/90 backdrop-blur-md border-b border-white/10 h-12 flex-shrink-0">
-          <div className="flex items-center gap-2.5 px-4 h-full">
-            <span className="flex-shrink-0"><Logo compact /></span>
-            {headerExtra}
-            <div className="flex-1" />
-            <button
-              onClick={() => onNavigate('activity')}
-              className={`relative px-2 py-1.5 rounded-lg text-sm transition-colors cursor-pointer flex-shrink-0 ${
-                activePage === 'activity'
-                  ? 'text-[var(--accent)]'
-                  : 'text-[var(--text-secondary)] hover:text-white hover:bg-white/5'
-              }`}
-              title="Activity"
-            >
-              🔔
-              {activityCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full bg-[var(--accent)] text-white text-[8px] font-bold flex items-center justify-center px-0.5">
-                  {activityCount}
-                </span>
-              )}
-            </button>
-          </div>
-        </header>
-
-        {/* Page content */}
-        <main className="flex-1 pb-[72px] lg:pb-6">
+        {/* Page content — on mobile, pad top for status bar and bottom for nav */}
+        <main className="flex-1 pt-safe pb-[72px] lg:pt-0 lg:pb-6">
           {children}
         </main>
 

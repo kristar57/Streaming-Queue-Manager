@@ -70,7 +70,7 @@ export function EntryRow({
   const otherProviders = providers.filter((p) => !subscribedIds.has(p.provider_id))
 
   return (
-    <div className="px-3 py-2.5 hover:bg-white/5 transition-colors">
+    <div className="px-3 py-3 hover:bg-white/5 transition-colors">
       {/* Main row */}
       <div className="flex items-start gap-2.5">
         {/* Queue reorder arrows (Up Next only) */}
@@ -111,7 +111,7 @@ export function EntryRow({
             <button onClick={() => onPriorityCycle(entry)} className="cursor-pointer flex-shrink-0 mt-0.5" title="Cycle priority">
               <PriorityDot priority={entry.priority} />
             </button>
-            <button onClick={() => onViewDetail(entry)} className="text-sm font-medium text-white leading-snug flex-1 min-w-0 text-left hover:text-[var(--accent)] transition-colors cursor-pointer">
+            <button onClick={() => onViewDetail(entry)} className="text-[15px] font-medium text-white leading-snug flex-1 min-w-0 text-left hover:text-[var(--accent)] transition-colors cursor-pointer">
               {title.title}
             </button>
             {statusChip && (
@@ -122,7 +122,7 @@ export function EntryRow({
           </div>
 
           {/* Meta line */}
-          <div className="flex items-center gap-1 mt-0.5 flex-wrap text-[11px] text-[var(--text-secondary)]">
+          <div className="flex items-center gap-1 mt-0.5 flex-wrap text-xs text-[var(--text-secondary)]">
             {year && <span>{year}</span>}
             {title.genres.slice(0, 2).map((g) => <span key={g}>· {g}</span>)}
             {runtime && <span>· {runtime}</span>}
