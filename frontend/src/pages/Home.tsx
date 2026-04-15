@@ -97,7 +97,7 @@ function sortUpNext(entries: WatchlistEntryWithTitle[]): WatchlistEntryWithTitle
 // ---------------------------------------------------------------
 export default function Home() {
   const { user, profile, signOut } = useAuth()
-  const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, rateEntry, deleteEntry, reorderEntry, reorderEntriesToPositions, syncAllAvailability } = useWatchlist(user?.id)
+  const { entries, availability, loading, error, addEntry, updateEntry, setStatus, toggleCaughtUp, cyclePriority, rateEntry, deleteEntry, reorderEntriesToPositions, syncAllAvailability } = useWatchlist(user?.id)
   const { subscriptions, subscribedIds, toggleSubscription } = useSubscriptions(user?.id)
   const { queues } = useSharedQueues(user?.id)
   const { map: titleQueueMap, refresh: refreshTitleQueueMap } = useTitleQueueMap(user?.id, queues)
@@ -396,7 +396,6 @@ export default function Home() {
             onPriorityCycle={cyclePriority}
             onCaughtUpToggle={toggleCaughtUp}
             onEdit={setEditingEntry}
-            onReorder={reorderEntry}
             onRecommend={setRecommendEntry}
             onAddToQueue={queues.length > 0 ? setAddToQueueEntry : undefined}
             onRate={handleRateEntry}
@@ -414,7 +413,6 @@ export default function Home() {
             onPriorityCycle={cyclePriority}
             onCaughtUpToggle={toggleCaughtUp}
             onEdit={setEditingEntry}
-            onReorder={reorderEntry}
             onRecommend={setRecommendEntry}
             onAddToQueue={queues.length > 0 ? setAddToQueueEntry : undefined}
             onRate={handleRateEntry}

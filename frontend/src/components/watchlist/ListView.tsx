@@ -13,7 +13,6 @@ interface ListViewProps {
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
   onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
   onEdit: (entry: WatchlistEntryWithTitle) => void
-  onReorder: (id: string, dir: 'up' | 'down') => void
   onRecommend: (entry: WatchlistEntryWithTitle) => void
   onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
   onRate: (entry: WatchlistEntryWithTitle, rating: -1 | 1 | 2 | 3 | null) => void
@@ -21,7 +20,7 @@ interface ListViewProps {
   onViewDetail: (entry: WatchlistEntryWithTitle) => void
 }
 
-export function ListView({ groups, availability, subscribedIds, titleQueueMap, currentUserId, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onAddToQueue, onRate, onDelete, onViewDetail }: ListViewProps) {
+export function ListView({ groups, availability, subscribedIds, titleQueueMap, currentUserId, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onRecommend, onAddToQueue, onRate, onDelete, onViewDetail }: ListViewProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
 
   function toggle(label: string) {
@@ -47,7 +46,7 @@ export function ListView({ groups, availability, subscribedIds, titleQueueMap, c
             </button>
             {!collapsed.has(group.label) && (
               <div className="bg-[var(--bg-card)] rounded-xl border border-white/20 divide-y divide-white/10 overflow-hidden">
-                {group.entries.map((entry, idx) => (
+                {group.entries.map((entry) => (
                   <EntryRow
                     key={entry.id}
                     entry={entry}
@@ -55,13 +54,10 @@ export function ListView({ groups, availability, subscribedIds, titleQueueMap, c
                     subscribedIds={subscribedIds}
                     sharedQueues={titleQueueMap?.[entry.title_id]}
                     currentUserId={currentUserId}
-                    canMoveUp={group.isUpNext && idx > 0}
-                    canMoveDown={group.isUpNext && idx < group.entries.length - 1}
                     onStatusChange={onStatusChange}
                     onPriorityCycle={onPriorityCycle}
                     onCaughtUpToggle={onCaughtUpToggle}
                     onEdit={onEdit}
-                    onReorder={group.isUpNext ? onReorder : undefined}
                     onRecommend={onRecommend}
                     onAddToQueue={onAddToQueue}
                     onRate={onRate}

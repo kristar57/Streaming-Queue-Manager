@@ -20,13 +20,10 @@ interface EntryCardProps {
   subscribedIds: Set<number>
   sharedQueues?: TitleQueueRef[]
   currentUserId?: string
-  canMoveUp?: boolean
-  canMoveDown?: boolean
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
   onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
   onEdit: (entry: WatchlistEntryWithTitle) => void
-  onReorder?: (id: string, dir: 'up' | 'down') => void
   onRecommend: (entry: WatchlistEntryWithTitle) => void
   onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
   onRate: (entry: WatchlistEntryWithTitle, rating: -1 | 1 | 2 | 3 | null) => void
@@ -40,13 +37,10 @@ export function EntryCard({
   subscribedIds,
   sharedQueues,
   currentUserId,
-  canMoveUp,
-  canMoveDown,
   onStatusChange,
   onPriorityCycle,
   onCaughtUpToggle,
   onEdit,
-  onReorder,
   onRecommend,
   onAddToQueue,
   onRate,
@@ -103,36 +97,9 @@ export function EntryCard({
           <PriorityDot priority={entry.priority} />
         </button>
 
-        {/* Queue reorder arrows */}
-        {onReorder && (
-          <div className="absolute top-2 right-2 flex flex-col gap-0.5">
-            <button
-              onClick={() => onReorder(entry.id, 'up')}
-              disabled={!canMoveUp}
-              className="w-5 h-5 flex items-center justify-center rounded bg-black/60 text-white/70 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-[10px]"
-              title="Move up"
-            >
-              ▲
-            </button>
-            <button
-              onClick={() => onReorder(entry.id, 'down')}
-              disabled={!canMoveDown}
-              className="w-5 h-5 flex items-center justify-center rounded bg-black/60 text-white/70 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-[10px]"
-              title="Move down"
-            >
-              ▼
-            </button>
-          </div>
-        )}
-
-        {/* Status chip overlay (no reorder arrows above = top-right) */}
-        {statusChip && !onReorder && (
+        {/* Status chip overlay */}
+        {statusChip && (
           <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${CHIP_COLORS[statusChip.color]}`}>
-            {statusChip.label}
-          </span>
-        )}
-        {statusChip && onReorder && (
-          <span className={`absolute bottom-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${CHIP_COLORS[statusChip.color]}`}>
             {statusChip.label}
           </span>
         )}

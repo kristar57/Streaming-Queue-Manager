@@ -12,7 +12,6 @@ interface CardViewProps {
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
   onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
   onEdit: (entry: WatchlistEntryWithTitle) => void
-  onReorder: (id: string, dir: 'up' | 'down') => void
   onRecommend: (entry: WatchlistEntryWithTitle) => void
   onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
   onRate: (entry: WatchlistEntryWithTitle, rating: -1 | 1 | 2 | 3 | null) => void
@@ -20,7 +19,7 @@ interface CardViewProps {
   onViewDetail: (entry: WatchlistEntryWithTitle) => void
 }
 
-export function CardView({ groups, availability, subscribedIds, titleQueueMap, currentUserId, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onReorder, onRecommend, onAddToQueue, onRate, onDelete, onViewDetail }: CardViewProps) {
+export function CardView({ groups, availability, subscribedIds, titleQueueMap, currentUserId, onStatusChange, onPriorityCycle, onCaughtUpToggle, onEdit, onRecommend, onAddToQueue, onRate, onDelete, onViewDetail }: CardViewProps) {
   return (
     <div className="space-y-8">
       {groups.map((group) =>
@@ -33,7 +32,7 @@ export function CardView({ groups, availability, subscribedIds, titleQueueMap, c
               className="grid gap-4"
               style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}
             >
-              {group.entries.map((entry, idx) => (
+              {group.entries.map((entry) => (
                 <EntryCard
                   key={entry.id}
                   entry={entry}
@@ -41,13 +40,10 @@ export function CardView({ groups, availability, subscribedIds, titleQueueMap, c
                   subscribedIds={subscribedIds}
                   sharedQueues={titleQueueMap?.[entry.title_id]}
                   currentUserId={currentUserId}
-                  canMoveUp={group.isUpNext && idx > 0}
-                  canMoveDown={group.isUpNext && idx < group.entries.length - 1}
                   onStatusChange={onStatusChange}
                   onPriorityCycle={onPriorityCycle}
                   onCaughtUpToggle={onCaughtUpToggle}
                   onEdit={onEdit}
-                  onReorder={group.isUpNext ? onReorder : undefined}
                   onRecommend={onRecommend}
                   onAddToQueue={onAddToQueue}
                   onRate={onRate}

@@ -12,13 +12,10 @@ interface EntryRowProps {
   subscribedIds: Set<number>
   sharedQueues?: TitleQueueRef[]
   currentUserId?: string
-  canMoveUp?: boolean
-  canMoveDown?: boolean
   onStatusChange: (id: string, status: EntryStatus) => void
   onPriorityCycle: (entry: WatchlistEntryWithTitle) => void
   onCaughtUpToggle: (entry: WatchlistEntryWithTitle) => void
   onEdit: (entry: WatchlistEntryWithTitle) => void
-  onReorder?: (id: string, dir: 'up' | 'down') => void
   onRecommend: (entry: WatchlistEntryWithTitle) => void
   onAddToQueue?: (entry: WatchlistEntryWithTitle) => void
   onRate: (entry: WatchlistEntryWithTitle, rating: -1 | 1 | 2 | 3 | null) => void
@@ -39,13 +36,10 @@ export function EntryRow({
   subscribedIds,
   sharedQueues,
   currentUserId,
-  canMoveUp,
-  canMoveDown,
   onStatusChange,
   onPriorityCycle,
   onCaughtUpToggle,
   onEdit,
-  onReorder,
   onRecommend,
   onAddToQueue,
   onRate,
@@ -73,24 +67,6 @@ export function EntryRow({
     <div className="px-3 py-3 hover:bg-white/5 transition-colors">
       {/* Main row */}
       <div className="flex items-start gap-2.5">
-        {/* Queue reorder arrows (Up Next only) */}
-        {onReorder && (
-          <div className="flex flex-col gap-0.5 self-center flex-shrink-0">
-            <button
-              onClick={() => onReorder(entry.id, 'up')}
-              disabled={!canMoveUp}
-              className="text-[var(--text-secondary)] hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-[10px] leading-none"
-              title="Move up"
-            >▲</button>
-            <button
-              onClick={() => onReorder(entry.id, 'down')}
-              disabled={!canMoveDown}
-              className="text-[var(--text-secondary)] hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-[10px] leading-none"
-              title="Move down"
-            >▼</button>
-          </div>
-        )}
-
         {/* Poster thumbnail */}
         <button onClick={() => onViewDetail(entry)} className="cursor-pointer flex-shrink-0">
           {title.poster_path ? (
