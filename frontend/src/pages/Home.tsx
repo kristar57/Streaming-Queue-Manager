@@ -290,7 +290,7 @@ export default function Home() {
   // ── Page: My List ─────────────────────────────────────────────
   function renderList() {
     return (
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3">
+      <div className="max-w-4xl mx-auto px-1 sm:px-4 py-3 sm:py-4 space-y-3">
         {/* Row 1: Search (full width) */}
         <TitleSearch
           onSelect={(result, genres) => {
@@ -430,7 +430,7 @@ export default function Home() {
   function renderQueue() {
     if (queues.length === 0) {
       return (
-        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3">
+        <div className="max-w-4xl mx-auto px-1 sm:px-4 py-3 sm:py-4 space-y-3">
           <div className="text-center py-16 text-[var(--text-secondary)] space-y-3">
             <p>You don't have any shared queues yet.</p>
             <button
@@ -445,7 +445,7 @@ export default function Home() {
     }
 
     return (
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3">
+      <div className="max-w-4xl mx-auto px-1 sm:px-4 py-3 sm:py-4 space-y-3">
         {activeQueue && (
           <>
             {queues.length > 1 ? (
@@ -611,7 +611,7 @@ export default function Home() {
     }
 
     return (
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+      <div className="max-w-4xl mx-auto px-1 sm:px-4 py-3 sm:py-4">
         <PersonalRecsPanel
           personalRecs={personalRecs}
           personalLoading={personalRecsLoading}
@@ -646,7 +646,7 @@ export default function Home() {
   function renderActivity() {
     if (!user) return null
     return (
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+      <div className="max-w-4xl mx-auto px-1 sm:px-4 py-3 sm:py-4">
         <RecommendationsPanel
           currentUserId={user.id}
           onClose={() => setActivePage('list')}
@@ -658,7 +658,7 @@ export default function Home() {
   // ── Page: Settings ────────────────────────────────────────────
   function renderSettings() {
     return (
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3">
+      <div className="max-w-4xl mx-auto px-1 sm:px-4 py-3 sm:py-4 space-y-3">
         <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider px-1">Settings</h2>
 
         <div className="bg-[var(--bg-card)] border border-white/10 rounded-xl overflow-hidden divide-y divide-white/10">

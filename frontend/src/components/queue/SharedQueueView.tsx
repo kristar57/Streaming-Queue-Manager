@@ -128,24 +128,24 @@ function QueueRow({
         />
       )}
 
-      <div className={`px-3 py-3 transition-colors ${isShelved ? 'opacity-60' : 'hover:bg-white/5'}`}>
-        <div className="flex items-start gap-2.5">
+      <div className={`px-2 py-3 transition-colors ${isShelved ? 'opacity-60' : 'hover:bg-white/5'}`}>
+        <div className="flex items-start gap-2">
           {/* Reorder arrows (active items only) */}
           {!isProposed && !isShelved ? (
-            <div className="flex flex-col gap-0.5 self-center flex-shrink-0 w-4">
+            <div className="flex flex-col self-center flex-shrink-0">
               <button
                 onClick={() => onReorder(qt.id, 'up')}
                 disabled={!canMoveUp}
-                className="text-[var(--text-secondary)] hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-[10px] leading-none"
+                className="text-[var(--text-secondary)] hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-sm px-2 py-1.5 leading-none"
               >▲</button>
               <button
                 onClick={() => onReorder(qt.id, 'down')}
                 disabled={!canMoveDown}
-                className="text-[var(--text-secondary)] hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-[10px] leading-none"
+                className="text-[var(--text-secondary)] hover:text-white disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-sm px-2 py-1.5 leading-none"
               >▼</button>
             </div>
           ) : (
-            <div className="w-4 flex-shrink-0" />
+            <div className="w-8 flex-shrink-0" />
           )}
 
           {/* Poster */}
@@ -293,7 +293,7 @@ function QueueRow({
 
         {/* Expanded actions — proposed and active only */}
         {expanded && !isShelved && (
-          <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(16px+44px+10px+6px)]">
+          <div className="flex flex-wrap gap-1.5 mt-2 pl-[calc(32px+44px+8px)]">
 
             {/* Proposed */}
             {isProposed && (
